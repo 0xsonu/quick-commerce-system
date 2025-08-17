@@ -39,6 +39,12 @@ management:
       prometheus:
         enabled: true
 
+app:
+  security:
+    jwt:
+      filter:
+        enabled: false
+
 logging:
   level:
     com.ecommerce: INFO
