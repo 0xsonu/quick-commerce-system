@@ -1,0 +1,83 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Core Services
+  - job_name: "api-gateway"
+    static_configs:
+      - targets: ["host.docker.internal:8081"]
+    metrics_path: "/actuator/prometheus"
+    scrape_interval: 5s
+
+  - job_name: "auth-service"
+    static_configs:
+      - targets: ["host.docker.internal:8082"]
+    metrics_path: "/actuator/prometheus"
+    scrape_interval: 5s
+
+  - job_name: "user-service"
+    static_configs:
+      - targets: ["host.docker.internal:8083"]
+    metrics_path: "/actuator/prometheus"
+    scrape_interval: 5s
+
+  # Catalog Services
+  - job_name: "product-service"
+    static_configs:
+      - targets: ["host.docker.internal:8084"]
+    metrics_path: "/actuator/prometheus"
+    scrape_interval: 5s
+
+  - job_name: "inventory-service"
+    static_configs:
+      - targets: ["host.docker.internal:8085"]
+    metrics_path: "/actuator/prometheus"
+    scrape_interval: 5s
+
+  # Commerce Services
+  - job_name: "cart-service"
+    static_configs:
+      - targets: ["host.docker.internal:8086"]
+    metrics_path: "/actuator/prometheus"
+    scrape_interval: 5s
+
+  - job_name: "order-service"
+    static_configs:
+      - targets: ["host.docker.internal:8087"]
+    metrics_path: "/actuator/prometheus"
+    scrape_interval: 5s
+
+  - job_name: "payment-service"
+    static_configs:
+      - targets: ["host.docker.internal:8088"]
+    metrics_path: "/actuator/prometheus"
+    scrape_interval: 5s
+
+  # Fulfillment Services
+  - job_name: "shipping-service"
+    static_configs:
+      - targets: ["host.docker.internal:8089"]
+    metrics_path: "/actuator/prometheus"
+    scrape_interval: 5s
+
+  - job_name: "notification-service"
+    static_configs:
+      - targets: ["host.docker.internal:8090"]
+    metrics_path: "/actuator/prometheus"
+    scrape_interval: 5s
+
+  # Engagement Services
+  - job_name: "review-service"
+    static_configs:
+      - targets: ["host.docker.internal:8091"]
+    metrics_path: "/actuator/prometheus"
+    scrape_interval: 5s
