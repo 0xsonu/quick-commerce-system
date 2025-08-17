@@ -45,6 +45,16 @@ app:
       filter:
         enabled: false
 
+auth:
+  token:
+    cleanup:
+      enabled: true
+      # Run every day at 2 AM
+      cron-expression: "0 0 2 * * ?"
+      # Keep revoked tokens for 30 days
+      revoked-token-retention-period: P30D
+      batch-size: 1000
+
 logging:
   level:
     com.ecommerce: INFO

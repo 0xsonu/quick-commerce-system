@@ -64,7 +64,7 @@ public class AuthenticationService {
 
         // Find user by username or email within tenant
         Optional<UserAuth> userOptional = userAuthRepository
-            .findActiveUserByTenantIdAndUsernameOrEmail(
+            .findByTenantIdAndUsernameOrEmail(
                 loginRequest.getTenantId(), 
                 loginRequest.getUsernameOrEmail()
             );
@@ -82,6 +82,13 @@ public class AuthenticationService {
             logger.warn("Login failed - account locked for user: {} in tenant: {}", 
                        user.getUsername(), user.getTenantId());
             throw new IllegalArgumentException("Account is locked due to too many failed login attempts");
+        }
+
+        // Check if account is active
+        if (!user.getIsActive()) {
+            logger.warn("Login failed - account inactive for user: {} in tenant: {}", 
+                       user.getUsername(), user.getTenantId());
+            throw new IllegalArgumentException("Invalid credentials");
         }
 
         // Verify password

@@ -1,19 +1,15 @@
 package com.ecommerce.auth;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.annotation.Rollback;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Basic application context test
  */
-@SpringBootTest
-@TestPropertySource(properties = {
-    "spring.datasource.url=jdbc:h2:mem:testdb",
-    "spring.datasource.driver-class-name=org.h2.Driver",
-    "spring.jpa.hibernate.ddl-auto=create-drop"
-})
-class AuthServiceApplicationTest {
+@Transactional
+@Rollback
+class AuthServiceApplicationTest extends BaseTestWithMysql {
 
     @Test
     void contextLoads() {

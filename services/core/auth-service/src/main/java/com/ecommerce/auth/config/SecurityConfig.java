@@ -41,6 +41,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/auth/login").permitAll()
                 .requestMatchers("/api/v1/auth/refresh").permitAll()
                 .requestMatchers("/api/v1/auth/validate").permitAll()
+                .requestMatchers("/api/v1/auth/logout").permitAll()
                 .requestMatchers("/api/v1/auth/health").permitAll()
                 // Actuator endpoints
                 .requestMatchers("/actuator/**").permitAll()

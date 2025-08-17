@@ -172,7 +172,7 @@ public class AuthController {
      */
     @PostMapping("/logout")
     @Timed
-    public ResponseEntity<?> logout(@RequestHeader("Authorization") String authorizationHeader) {
+    public ResponseEntity<?> logout(@RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         String correlationId = CorrelationIdGenerator.generate();
         MDC.put("correlationId", correlationId);
 
@@ -202,7 +202,7 @@ public class AuthController {
             
             logger.info("Logout successful for user: {}", validation.getUserId());
             
-            return ResponseEntity.ok().build();
+            return ResponseEntity.ok(new LogoutResponse("Logout successful"));
             
         } catch (Exception e) {
             logger.error("Logout error", e);
