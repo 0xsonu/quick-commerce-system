@@ -4,6 +4,24 @@ server:
 spring:
   application:
     name: api-gateway
+  main:
+    web-application-type: reactive
+
+  # Redis configuration for rate limiting
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: 0
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
   cloud:
     gateway:
       default-filters:
@@ -14,23 +32,205 @@ spring:
             allowedOrigins: "*"
             allowedMethods: "*"
             allowedHeaders: "*"
+      routes:
+        # Authentication Service
+        - id: auth-service
+          uri: ${AUTH_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/auth/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: auth-service
+                fallbackUri: forward:/fallback/auth
+
+        # User Management Service
+        - id: user-service
+          uri: ${USER_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/v1/users/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: user-service
+                fallbackUri: forward:/fallback/user
+
+        # Product Catalog Service
+        - id: product-service
+          uri: ${PRODUCT_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/v1/products/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: product-service
+                fallbackUri: forward:/fallback/product
+
+        # Inventory Service
+        - id: inventory-service
+          uri: ${INVENTORY_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/v1/inventory/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: inventory-service
+                fallbackUri: forward:/fallback/inventory
+
+        # Shopping Cart Service
+        - id: cart-service
+          uri: ${CART_SERVICE_URL:http://localhost:8086}
+          predicates:
+            - Path=/api/v1/cart/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: cart-service
+                fallbackUri: forward:/fallback/cart
+
+        # Order Management Service
+        - id: order-service
+          uri: ${ORDER_SERVICE_URL:http://localhost:8087}
+          predicates:
+            - Path=/api/v1/orders/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: order-service
+                fallbackUri: forward:/fallback/order
+
+        # Payment Service
+        - id: payment-service
+          uri: ${PAYMENT_SERVICE_URL:http://localhost:8088}
+          predicates:
+            - Path=/api/v1/payments/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: payment-service
+                fallbackUri: forward:/fallback/payment
+
+        # Shipping Service
+        - id: shipping-service
+          uri: ${SHIPPING_SERVICE_URL:http://localhost:8089}
+          predicates:
+            - Path=/api/v1/shipping/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: shipping-service
+                fallbackUri: forward:/fallback/shipping
+
+        # Notification Service
+        - id: notification-service
+          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8090}
+          predicates:
+            - Path=/api/v1/notifications/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: notification-service
+                fallbackUri: forward:/fallback/notification
+
+        # Review & Rating Service
+        - id: review-service
+          uri: ${REVIEW_SERVICE_URL:http://localhost:8091}
+          predicates:
+            - Path=/api/v1/reviews/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: review-service
+                fallbackUri: forward:/fallback/review
+
+# Circuit breaker configuration
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-size: 10
+        permitted-number-of-calls-in-half-open-state: 3
+        sliding-window-type: time_based
+        minimum-number-of-calls: 5
+        wait-duration-in-open-state: 30s
+        failure-rate-threshold: 50
+        slow-call-rate-threshold: 50
+        slow-call-duration-threshold: 2s
+        record-exceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.web.client.ResourceAccessException
+    instances:
+      auth-service:
+        base-config: default
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        wait-duration-in-open-state: 15s
+        failure-rate-threshold: 60
+      payment-service:
+        base-config: default
+        sliding-window-size: 15
+        minimum-number-of-calls: 5
+        wait-duration-in-open-state: 45s
+        failure-rate-threshold: 30
+      product-service:
+        base-config: default
+        sliding-window-size: 50
+        minimum-number-of-calls: 20
+        wait-duration-in-open-state: 20s
+        failure-rate-threshold: 40
+
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 5s
+    instances:
+      auth-service:
+        timeout-duration: 3s
+      payment-service:
+        timeout-duration: 10s
+      product-service:
+        timeout-duration: 3s
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health,info,metrics,prometheus,circuitbreakers
   endpoint:
     health:
       show-details: always
+      show-components: always
+    circuitbreakers:
+      enabled: true
+  health:
+    circuitbreakers:
+      enabled: true
+    redis:
+      enabled: true
   metrics:
     export:
       prometheus:
         enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.95, 0.99
+      slo:
+        http.server.requests: 100ms, 200ms, 500ms, 1s, 2s
+
+# Application configuration
+app:
+  security:
+    jwt:
+      filter:
+        enabled: false # Disable servlet-based JWT filter for reactive gateway
 
 logging:
   level:
     com.ecommerce: INFO
     org.springframework.cloud.gateway: DEBUG
+    io.github.resilience4j: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{correlationId}] [%X{tenantId}] %logger{36} - %msg%n"
