@@ -7,6 +7,15 @@ CREATE DATABASE IF NOT EXISTS order_service;
 CREATE DATABASE IF NOT EXISTS payment_service;
 CREATE DATABASE IF NOT EXISTS shipping_service;
 
+-- Create test databases for each service
+CREATE DATABASE IF NOT EXISTS auth_service_test;
+CREATE DATABASE IF NOT EXISTS user_service_test;
+CREATE DATABASE IF NOT EXISTS inventory_service_test;
+CREATE DATABASE IF NOT EXISTS cart_service_test;
+CREATE DATABASE IF NOT EXISTS order_service_test;
+CREATE DATABASE IF NOT EXISTS payment_service_test;
+CREATE DATABASE IF NOT EXISTS shipping_service_test;
+
 -- Create users and grant permissions
 CREATE USER IF NOT EXISTS 'auth_user'@'%' IDENTIFIED BY 'auth_password';
 CREATE USER IF NOT EXISTS 'user_user'@'%' IDENTIFIED BY 'user_password';
@@ -16,6 +25,9 @@ CREATE USER IF NOT EXISTS 'order_user'@'%' IDENTIFIED BY 'order_password';
 CREATE USER IF NOT EXISTS 'payment_user'@'%' IDENTIFIED BY 'payment_password';
 CREATE USER IF NOT EXISTS 'shipping_user'@'%' IDENTIFIED BY 'shipping_password';
 
+-- Create test user with access to all test databases
+CREATE USER IF NOT EXISTS 'test'@'%' IDENTIFIED BY 'test';
+
 -- Grant permissions
 GRANT ALL PRIVILEGES ON auth_service.* TO 'auth_user'@'%';
 GRANT ALL PRIVILEGES ON user_service.* TO 'user_user'@'%';
@@ -24,5 +36,14 @@ GRANT ALL PRIVILEGES ON cart_service.* TO 'cart_user'@'%';
 GRANT ALL PRIVILEGES ON order_service.* TO 'order_user'@'%';
 GRANT ALL PRIVILEGES ON payment_service.* TO 'payment_user'@'%';
 GRANT ALL PRIVILEGES ON shipping_service.* TO 'shipping_user'@'%';
+
+-- Grant permissions for test databases
+GRANT ALL PRIVILEGES ON auth_service_test.* TO 'test'@'%';
+GRANT ALL PRIVILEGES ON user_service_test.* TO 'test'@'%';
+GRANT ALL PRIVILEGES ON inventory_service_test.* TO 'test'@'%';
+GRANT ALL PRIVILEGES ON cart_service_test.* TO 'test'@'%';
+GRANT ALL PRIVILEGES ON order_service_test.* TO 'test'@'%';
+GRANT ALL PRIVILEGES ON payment_service_test.* TO 'test'@'%';
+GRANT ALL PRIVILEGES ON shipping_service_test.* TO 'test'@'%';
 
 FLUSH PRIVILEGES;

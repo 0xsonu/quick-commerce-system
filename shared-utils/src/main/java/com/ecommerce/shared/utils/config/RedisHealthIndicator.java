@@ -4,6 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -18,6 +20,8 @@ import java.util.Properties;
  * Provides detailed health information including connection status and server info
  */
 @Component
+@ConditionalOnClass(RedisTemplate.class)
+@ConditionalOnBean({RedisConnectionFactory.class, RedisTemplate.class})
 public class RedisHealthIndicator implements HealthIndicator {
 
     private static final Logger logger = LoggerFactory.getLogger(RedisHealthIndicator.class);

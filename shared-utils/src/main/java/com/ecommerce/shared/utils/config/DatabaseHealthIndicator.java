@@ -4,6 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -19,6 +21,8 @@ import java.util.Map;
  * Provides detailed health information including connection pool status
  */
 @Component
+@ConditionalOnClass(JdbcTemplate.class)
+@ConditionalOnBean(DataSource.class)
 public class DatabaseHealthIndicator implements HealthIndicator {
 
     private static final Logger logger = LoggerFactory.getLogger(DatabaseHealthIndicator.class);

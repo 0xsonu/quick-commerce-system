@@ -4,6 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +17,8 @@ import java.util.Map;
  * Provides detailed health information including connection status and database info
  */
 @Component
+@ConditionalOnClass(MongoTemplate.class)
+@ConditionalOnBean(MongoTemplate.class)
 public class MongoHealthIndicator implements HealthIndicator {
 
     private static final Logger logger = LoggerFactory.getLogger(MongoHealthIndicator.class);
