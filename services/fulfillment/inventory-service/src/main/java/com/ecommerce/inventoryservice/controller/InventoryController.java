@@ -3,6 +3,7 @@ package com.ecommerce.inventoryservice.controller;
 import com.ecommerce.inventoryservice.dto.*;
 import com.ecommerce.inventoryservice.entity.InventoryItem;
 import com.ecommerce.inventoryservice.service.InventoryService;
+import com.ecommerce.inventoryservice.service.InventoryReservationService;
 import com.ecommerce.inventoryservice.service.StockTransactionService;
 import com.ecommerce.shared.utils.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -21,12 +22,15 @@ import java.util.List;
 public class InventoryController {
 
     private final InventoryService inventoryService;
+    private final InventoryReservationService reservationService;
     private final StockTransactionService stockTransactionService;
 
     @Autowired
-    public InventoryController(InventoryService inventoryService, 
+    public InventoryController(InventoryService inventoryService,
+                              InventoryReservationService reservationService,
                               StockTransactionService stockTransactionService) {
         this.inventoryService = inventoryService;
+        this.reservationService = reservationService;
         this.stockTransactionService = stockTransactionService;
     }
 
@@ -217,6 +221,55 @@ public class InventoryController {
         List<StockTransactionResponse> response = stockTransactionService
             .getInventoryItemHistory(tenantId, id, startDate, endDate);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * Reserve inventory for an order
+     */
+    @PostMapping("/reservations")
+    public ResponseEntity<ApiResponse<ReservationResponse>> reserveInventory(
+            @RequestHeader("X-Tenant-ID") String tenantId,
+            @Valid @RequestBody ReservationRequest request) {
+        
+        ReservationResponse response = reservationService.reserveInventory(tenantId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
+    }
+
+    /**
+     * Get reservation by ID
+     */
+    @GetMapping("/reservations/{reservationId}")
+    public ResponseEntity<ApiResponse<ReservationResponse>> getReservation(
+            @RequestHeader("X-Tenant-ID") String tenantId,
+            @PathVariable String reservationId) {
+        
+        ReservationResponse response = reservationService.getReservation(tenantId, reservationId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * Confirm reservation (convert to actual stock deduction)
+     */
+    @PostMapping("/reservations/{reservationId}/confirm")
+    public ResponseEntity<ApiResponse<Void>> confirmReservation(
+            @RequestHeader("X-Tenant-ID") String tenantId,
+            @PathVariable String reservationId) {
+        
+        reservationService.confirmReservation(tenantId, reservationId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    /**
+     * Release reservation (return stock to available)
+     */
+    @PostMapping("/reservations/{reservationId}/release")
+    public ResponseEntity<ApiResponse<Void>> releaseReservation(
+            @RequestHeader("X-Tenant-ID") String tenantId,
+            @PathVariable String reservationId,
+            @RequestParam(defaultValue = "Manual release") String reason) {
+        
+        reservationService.releaseReservation(tenantId, reservationId, reason);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     /**

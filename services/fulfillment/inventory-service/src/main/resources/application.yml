@@ -47,6 +47,12 @@ app:
   kafka:
     topics:
       inventory-events: inventory-events
+      order-events: order-events
+  inventory:
+    reservation:
+      ttl-minutes: 30
+      cleanup-interval-minutes: 5
+      bulk-cleanup-interval-minutes: 60
 
 management:
   endpoints:
