@@ -70,6 +70,12 @@ public class CacheConfig {
         // Categories and brands - 2 hours TTL (less frequently changed)
         cacheConfigurations.put("categories", defaultConfig.entryTtl(Duration.ofHours(2)));
         cacheConfigurations.put("brands", defaultConfig.entryTtl(Duration.ofHours(2)));
+        
+        // Product recommendations - 30 minutes TTL
+        cacheConfigurations.put("product-recommendations", defaultConfig.entryTtl(Duration.ofMinutes(30)));
+        
+        // Search suggestions - 1 hour TTL
+        cacheConfigurations.put("search-suggestions", defaultConfig.entryTtl(Duration.ofHours(1)));
 
         return RedisCacheManager.builder(connectionFactory)
             .cacheDefaults(defaultConfig)

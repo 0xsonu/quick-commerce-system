@@ -7,6 +7,7 @@ import com.ecommerce.shared.utils.exception.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -21,10 +22,12 @@ import java.util.stream.Collectors;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final CacheManager cacheManager;
 
     @Autowired
-    public ProductService(ProductRepository productRepository) {
+    public ProductService(ProductRepository productRepository, CacheManager cacheManager) {
         this.productRepository = productRepository;
+        this.cacheManager = cacheManager;
     }
 
     @Cacheable(value = "products", key = "#tenantId + ':' + #productId")
@@ -33,6 +36,11 @@ public class ProductService {
             .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + productId));
         
         return new ProductResponse(product);
+    }
+
+    @Cacheable(value = "product-search", key = "#tenantId + ':' + #sku")
+    public ProductResponse getProductBySkuCached(String tenantId, String sku) {
+        return getProductBySku(tenantId, sku);
     }
 
     public ProductResponse getProductBySku(String tenantId, String sku) {
@@ -105,10 +113,14 @@ public class ProductService {
         Product product = mapToProduct(tenantId, request);
         Product savedProduct = productRepository.save(product);
         
+        // Evict related caches when new product is created
+        evictRelatedCaches(tenantId);
+        
         return new ProductResponse(savedProduct);
     }
 
-    @CacheEvict(value = "products", key = "#tenantId + ':' + #productId")
+    @CacheEvict(value = {"products", "product-search", "categories", "brands", "product-recommendations"}, 
+                key = "#tenantId + ':' + #productId", allEntries = true)
     public ProductResponse updateProduct(String tenantId, String productId, UpdateProductRequest request) {
         Product existingProduct = productRepository.findByTenantIdAndId(tenantId, productId)
             .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + productId));
@@ -124,7 +136,8 @@ public class ProductService {
         return new ProductResponse(savedProduct);
     }
 
-    @CacheEvict(value = "products", key = "#tenantId + ':' + #productId")
+    @CacheEvict(value = {"products", "product-search", "categories", "brands", "product-recommendations"}, 
+                key = "#tenantId + ':' + #productId", allEntries = true)
     public void deleteProduct(String tenantId, String productId) {
         if (!productRepository.findByTenantIdAndId(tenantId, productId).isPresent()) {
             throw new ResourceNotFoundException("Product not found with ID: " + productId);
@@ -146,6 +159,7 @@ public class ProductService {
                                  productPage.getTotalElements(), productPage.getTotalPages());
     }
 
+    @Cacheable(value = "categories", key = "#tenantId")
     public List<String> getCategories(String tenantId) {
         return productRepository.findDistinctCategoriesByTenantId(tenantId).stream()
             .map(Product::getCategory)
@@ -155,6 +169,7 @@ public class ProductService {
             .collect(Collectors.toList());
     }
 
+    @Cacheable(value = "brands", key = "#tenantId")
     public List<String> getBrands(String tenantId) {
         return productRepository.findDistinctBrandsByTenantId(tenantId).stream()
             .map(Product::getBrand)
@@ -244,6 +259,17 @@ public class ProductService {
         }
         if (request.getStatus() != null) {
             product.setStatus(request.getStatus());
+        }
+    }
+
+    private void evictRelatedCaches(String tenantId) {
+        // Evict tenant-specific caches
+        String[] cacheNames = {"categories", "brands", "product-search", "product-recommendations"};
+        for (String cacheName : cacheNames) {
+            var cache = cacheManager.getCache(cacheName);
+            if (cache != null) {
+                cache.evict(tenantId);
+            }
         }
     }
 }
