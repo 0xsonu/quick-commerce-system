@@ -15,7 +15,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -23,11 +25,14 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CacheManager cacheManager;
+    private final ProductEventPublisher eventPublisher;
 
     @Autowired
-    public ProductService(ProductRepository productRepository, CacheManager cacheManager) {
+    public ProductService(ProductRepository productRepository, CacheManager cacheManager, 
+                         ProductEventPublisher eventPublisher) {
         this.productRepository = productRepository;
         this.cacheManager = cacheManager;
+        this.eventPublisher = eventPublisher;
     }
 
     @Cacheable(value = "products", key = "#tenantId + ':' + #productId")
@@ -113,6 +118,9 @@ public class ProductService {
         Product product = mapToProduct(tenantId, request);
         Product savedProduct = productRepository.save(product);
         
+        // Publish ProductCreated event
+        eventPublisher.publishProductCreatedEvent(savedProduct);
+        
         // Evict related caches when new product is created
         evictRelatedCaches(tenantId);
         
@@ -125,13 +133,22 @@ public class ProductService {
         Product existingProduct = productRepository.findByTenantIdAndId(tenantId, productId)
             .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + productId));
         
+        // Capture previous values for event publishing
+        Map<String, Object> previousValues = captureProductValues(existingProduct);
+        
         // Check SKU uniqueness if SKU is being updated
         if (request.getName() != null && !request.getName().equals(existingProduct.getName())) {
             // Generate new SKU if name changed (optional business logic)
         }
         
+        // Track which fields are being updated
+        Map<String, Object> updatedFields = trackUpdatedFields(request);
+        
         updateProductFields(existingProduct, request);
         Product savedProduct = productRepository.save(existingProduct);
+        
+        // Publish ProductUpdated event
+        eventPublisher.publishProductUpdatedEvent(savedProduct, previousValues, updatedFields);
         
         return new ProductResponse(savedProduct);
     }
@@ -139,9 +156,11 @@ public class ProductService {
     @CacheEvict(value = {"products", "product-search", "categories", "brands", "product-recommendations"}, 
                 key = "#tenantId + ':' + #productId", allEntries = true)
     public void deleteProduct(String tenantId, String productId) {
-        if (!productRepository.findByTenantIdAndId(tenantId, productId).isPresent()) {
-            throw new ResourceNotFoundException("Product not found with ID: " + productId);
-        }
+        Product existingProduct = productRepository.findByTenantIdAndId(tenantId, productId)
+            .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + productId));
+        
+        // Publish ProductDeleted event before deletion
+        eventPublisher.publishProductDeletedEvent(existingProduct, "Manual deletion");
         
         productRepository.deleteByTenantIdAndId(tenantId, productId);
     }
@@ -271,5 +290,52 @@ public class ProductService {
                 cache.evict(tenantId);
             }
         }
+    }
+
+    private Map<String, Object> captureProductValues(Product product) {
+        Map<String, Object> values = new HashMap<>();
+        values.put("name", product.getName());
+        values.put("description", product.getDescription());
+        values.put("category", product.getCategory());
+        values.put("subcategory", product.getSubcategory());
+        values.put("brand", product.getBrand());
+        values.put("sku", product.getSku());
+        if (product.getPrice() != null) {
+            values.put("price", product.getPrice().getAmount());
+            values.put("currency", product.getPrice().getCurrency());
+        }
+        values.put("attributes", product.getAttributes());
+        values.put("status", product.getStatus() != null ? product.getStatus().name() : null);
+        return values;
+    }
+
+    private Map<String, Object> trackUpdatedFields(UpdateProductRequest request) {
+        Map<String, Object> updatedFields = new HashMap<>();
+        if (request.getName() != null) {
+            updatedFields.put("name", request.getName());
+        }
+        if (request.getDescription() != null) {
+            updatedFields.put("description", request.getDescription());
+        }
+        if (request.getCategory() != null) {
+            updatedFields.put("category", request.getCategory());
+        }
+        if (request.getSubcategory() != null) {
+            updatedFields.put("subcategory", request.getSubcategory());
+        }
+        if (request.getBrand() != null) {
+            updatedFields.put("brand", request.getBrand());
+        }
+        if (request.getPrice() != null) {
+            updatedFields.put("price", request.getPrice().getAmount());
+            updatedFields.put("currency", request.getPrice().getCurrency());
+        }
+        if (request.getAttributes() != null) {
+            updatedFields.put("attributes", request.getAttributes());
+        }
+        if (request.getStatus() != null) {
+            updatedFields.put("status", request.getStatus().name());
+        }
+        return updatedFields;
     }
 }

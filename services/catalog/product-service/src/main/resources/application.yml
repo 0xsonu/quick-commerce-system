@@ -47,6 +47,11 @@ management:
       prometheus:
         enabled: true
 
+app:
+  kafka:
+    topics:
+      product-events: product-events
+
 logging:
   level:
     com.ecommerce: INFO

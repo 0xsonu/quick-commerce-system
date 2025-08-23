@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -30,6 +31,12 @@ class ProductServiceTest {
 
     @Mock
     private ProductRepository productRepository;
+
+    @Mock
+    private org.springframework.cache.CacheManager cacheManager;
+
+    @Mock
+    private ProductEventPublisher eventPublisher;
 
     @InjectMocks
     private ProductService productService;
@@ -152,6 +159,7 @@ class ProductServiceTest {
         assertEquals(testProduct.getSku(), result.getSku());
         verify(productRepository).existsByTenantIdAndSku(tenantId, createRequest.getSku());
         verify(productRepository).save(any(Product.class));
+        verify(eventPublisher).publishProductCreatedEvent(any(Product.class));
     }
 
     @Test
@@ -182,6 +190,7 @@ class ProductServiceTest {
         assertNotNull(result);
         verify(productRepository).findByTenantIdAndId(tenantId, productId);
         verify(productRepository).save(any(Product.class));
+        verify(eventPublisher).publishProductUpdatedEvent(any(Product.class), any(Map.class), any(Map.class));
     }
 
     @Test
@@ -208,6 +217,7 @@ class ProductServiceTest {
 
         // Then
         verify(productRepository).findByTenantIdAndId(tenantId, productId);
+        verify(eventPublisher).publishProductDeletedEvent(any(Product.class), eq("Manual deletion"));
         verify(productRepository).deleteByTenantIdAndId(tenantId, productId);
     }
 
