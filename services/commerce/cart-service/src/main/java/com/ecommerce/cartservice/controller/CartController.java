@@ -147,6 +147,21 @@ public class CartController {
     }
 
     /**
+     * Validate cart for checkout
+     */
+    @PostMapping("/validate")
+    public ResponseEntity<Void> validateCart(
+            @RequestHeader("X-Tenant-ID") String tenantId,
+            @RequestHeader("X-User-ID") String userId) {
+        
+        logger.debug("POST /api/v1/cart/validate - tenant: {}, user: {}", tenantId, userId);
+        
+        cartService.validateCartForCheckout(tenantId, userId);
+        
+        return ResponseEntity.ok().build();
+    }
+
+    /**
      * Health check endpoint
      */
     @GetMapping("/health")

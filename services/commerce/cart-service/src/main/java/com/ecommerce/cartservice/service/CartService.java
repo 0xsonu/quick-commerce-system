@@ -1,6 +1,7 @@
 package com.ecommerce.cartservice.service;
 
 import com.ecommerce.cartservice.dto.AddToCartRequest;
+import com.ecommerce.cartservice.dto.CartResponse;
 import com.ecommerce.cartservice.dto.UpdateCartItemRequest;
 import com.ecommerce.cartservice.entity.ShoppingCartBackup;
 import com.ecommerce.cartservice.model.Cart;
@@ -27,14 +28,20 @@ public class CartService {
     private final CartRedisRepository cartRedisRepository;
     private final ShoppingCartBackupRepository cartBackupRepository;
     private final CartCalculationService calculationService;
+    private final CartValidationService validationService;
+    private final IdempotencyService idempotencyService;
 
     @Autowired
     public CartService(CartRedisRepository cartRedisRepository,
                       ShoppingCartBackupRepository cartBackupRepository,
-                      CartCalculationService calculationService) {
+                      CartCalculationService calculationService,
+                      CartValidationService validationService,
+                      IdempotencyService idempotencyService) {
         this.cartRedisRepository = cartRedisRepository;
         this.cartBackupRepository = cartBackupRepository;
         this.calculationService = calculationService;
+        this.validationService = validationService;
+        this.idempotencyService = idempotencyService;
     }
 
     /**
@@ -71,58 +78,120 @@ public class CartService {
     }
 
     /**
-     * Add item to cart
+     * Add item to cart with validation and idempotency
      */
     @Transactional
     public Cart addToCart(String tenantId, String userId, AddToCartRequest request) {
         logger.debug("Adding item to cart for tenant: {} and user: {}", tenantId, userId);
 
-        Cart cart = getCart(tenantId, userId);
-        
-        CartItem newItem = new CartItem(
-            request.getProductId(),
-            request.getSku(),
-            request.getProductName(),
-            request.getQuantity(),
-            request.getUnitPrice()
-        );
-        newItem.setImageUrl(request.getImageUrl());
-        newItem.setAttributes(request.getAttributes());
-
-        if (!calculationService.validateCartItem(newItem)) {
-            throw new IllegalArgumentException("Invalid cart item data");
+        // Check idempotency
+        if (request.getIdempotencyKey() != null) {
+            Optional<CartResponse> cachedResult = idempotencyService.checkIdempotency(
+                tenantId, userId, request.getIdempotencyKey(), CartResponse.class);
+            if (cachedResult.isPresent()) {
+                logger.debug("Returning cached result for idempotency key: {}", request.getIdempotencyKey());
+                return convertResponseToCart(cachedResult.get());
+            }
+            
+            // Mark as processing
+            idempotencyService.markAsProcessing(tenantId, userId, request.getIdempotencyKey());
         }
 
-        cart.addItem(newItem);
-        calculationService.calculateCartTotals(cart);
+        try {
+            // Validate request against external services
+            validationService.validateAddToCartRequest(tenantId, request);
 
-        // Save to Redis and backup to MySQL
-        Cart savedCart = cartRedisRepository.save(cart);
-        saveToBackup(savedCart);
+            Cart cart = getCart(tenantId, userId);
+            
+            CartItem newItem = new CartItem(
+                request.getProductId(),
+                request.getSku(),
+                request.getProductName(),
+                request.getQuantity(),
+                request.getUnitPrice()
+            );
+            newItem.setImageUrl(request.getImageUrl());
+            newItem.setAttributes(request.getAttributes());
 
-        logger.info("Added item {} to cart for tenant: {} and user: {}", 
-                   request.getProductId(), tenantId, userId);
-        return savedCart;
+            if (!calculationService.validateCartItem(newItem)) {
+                throw new IllegalArgumentException("Invalid cart item data");
+            }
+
+            cart.addItem(newItem);
+            calculationService.calculateCartTotals(cart);
+
+            // Save to Redis and backup to MySQL
+            Cart savedCart = cartRedisRepository.save(cart);
+            saveToBackup(savedCart);
+
+            // Store result for idempotency
+            if (request.getIdempotencyKey() != null) {
+                CartResponse response = new CartResponse(savedCart);
+                idempotencyService.storeResult(tenantId, userId, request.getIdempotencyKey(), response);
+            }
+
+            logger.info("Added item {} to cart for tenant: {} and user: {}", 
+                       request.getProductId(), tenantId, userId);
+            return savedCart;
+            
+        } catch (Exception e) {
+            // Remove idempotency key on failure
+            if (request.getIdempotencyKey() != null) {
+                idempotencyService.removeIdempotencyKey(tenantId, userId, request.getIdempotencyKey());
+            }
+            throw e;
+        }
     }
 
     /**
-     * Update cart item quantity
+     * Update cart item quantity with validation and idempotency
      */
     @Transactional
     public Cart updateCartItem(String tenantId, String userId, UpdateCartItemRequest request) {
         logger.debug("Updating cart item for tenant: {} and user: {}", tenantId, userId);
 
-        Cart cart = getCart(tenantId, userId);
-        cart.updateItemQuantity(request.getProductId(), request.getSku(), request.getQuantity());
-        calculationService.calculateCartTotals(cart);
+        // Check idempotency
+        if (request.getIdempotencyKey() != null) {
+            Optional<CartResponse> cachedResult = idempotencyService.checkIdempotency(
+                tenantId, userId, request.getIdempotencyKey(), CartResponse.class);
+            if (cachedResult.isPresent()) {
+                logger.debug("Returning cached result for idempotency key: {}", request.getIdempotencyKey());
+                return convertResponseToCart(cachedResult.get());
+            }
+            
+            // Mark as processing
+            idempotencyService.markAsProcessing(tenantId, userId, request.getIdempotencyKey());
+        }
 
-        // Save to Redis and backup to MySQL
-        Cart savedCart = cartRedisRepository.save(cart);
-        saveToBackup(savedCart);
+        try {
+            // Validate request against external services
+            validationService.validateCartItemUpdate(tenantId, request.getProductId(), request.getSku(), request.getQuantity());
 
-        logger.info("Updated item {} quantity to {} for tenant: {} and user: {}", 
-                   request.getProductId(), request.getQuantity(), tenantId, userId);
-        return savedCart;
+            Cart cart = getCart(tenantId, userId);
+            cart.updateItemQuantity(request.getProductId(), request.getSku(), request.getQuantity());
+            calculationService.calculateCartTotals(cart);
+
+            // Save to Redis and backup to MySQL
+            Cart savedCart = cartRedisRepository.save(cart);
+            saveToBackup(savedCart);
+
+            // Store result for idempotency
+            if (request.getIdempotencyKey() != null) {
+                CartResponse response = new CartResponse(savedCart);
+                idempotencyService.storeResult(tenantId, userId, request.getIdempotencyKey(), response);
+            }
+
+            logger.info("Updated item {} quantity to {} for tenant: {} and user: {}", 
+                       request.getProductId(), request.getQuantity(), tenantId, userId);
+            return savedCart;
+            
+        } catch (Exception e) {
+            // Remove idempotency key on failure
+            if (request.getIdempotencyKey() != null) {
+                idempotencyService.removeIdempotencyKey(tenantId, userId, request.getIdempotencyKey());
+            }
+            throw e;
+        }
     }
 
     /**
@@ -185,6 +254,33 @@ public class CartService {
     public boolean cartExists(String tenantId, String userId) {
         return cartRedisRepository.existsByTenantIdAndUserId(tenantId, userId) ||
                cartBackupRepository.existsByTenantIdAndUserId(tenantId, userId);
+    }
+
+    /**
+     * Validate cart for checkout
+     */
+    public void validateCartForCheckout(String tenantId, String userId) {
+        logger.debug("Validating cart for checkout for tenant: {} and user: {}", tenantId, userId);
+        
+        Cart cart = getCart(tenantId, userId);
+        validationService.validateCartForCheckout(tenantId, cart);
+        
+        logger.debug("Cart validation for checkout passed for tenant: {} and user: {}", tenantId, userId);
+    }
+
+    /**
+     * Convert CartResponse back to Cart (for idempotency)
+     */
+    private Cart convertResponseToCart(CartResponse response) {
+        // This is a simplified conversion - in a real scenario you might want to 
+        // fetch the actual cart from storage to ensure consistency
+        Cart cart = new Cart(response.getTenantId(), response.getUserId());
+        cart.setItems(response.getItems());
+        cart.setSubtotal(response.getSubtotal());
+        cart.setTax(response.getTax());
+        cart.setTotal(response.getTotal());
+        cart.setCurrency(response.getCurrency());
+        return cart;
     }
 
     /**

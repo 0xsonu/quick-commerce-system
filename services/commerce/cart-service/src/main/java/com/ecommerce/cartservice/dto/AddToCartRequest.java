@@ -30,6 +30,7 @@ public class AddToCartRequest {
 
     private String imageUrl;
     private String attributes;
+    private String idempotencyKey;
 
     public AddToCartRequest() {}
 
@@ -96,5 +97,13 @@ public class AddToCartRequest {
 
     public void setAttributes(String attributes) {
         this.attributes = attributes;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
     }
 }

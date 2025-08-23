@@ -213,4 +213,33 @@ class CartControllerTest {
                 .header("X-Tenant-ID", TENANT_ID))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void testValidateCart_Success() throws Exception {
+        // Given
+        doNothing().when(cartService).validateCartForCheckout(TENANT_ID, USER_ID);
+
+        // When & Then
+        mockMvc.perform(post(BASE_URL + "/validate")
+                .header("X-Tenant-ID", TENANT_ID)
+                .header("X-User-ID", USER_ID))
+                .andExpect(status().isOk());
+
+        verify(cartService).validateCartForCheckout(TENANT_ID, USER_ID);
+    }
+
+    @Test
+    void testValidateCart_ValidationFails() throws Exception {
+        // Given
+        doThrow(new RuntimeException("Cart validation failed"))
+            .when(cartService).validateCartForCheckout(TENANT_ID, USER_ID);
+
+        // When & Then
+        mockMvc.perform(post(BASE_URL + "/validate")
+                .header("X-Tenant-ID", TENANT_ID)
+                .header("X-User-ID", USER_ID))
+                .andExpect(status().isInternalServerError());
+
+        verify(cartService).validateCartForCheckout(TENANT_ID, USER_ID);
+    }
 }

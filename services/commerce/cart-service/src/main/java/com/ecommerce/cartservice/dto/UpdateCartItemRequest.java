@@ -19,6 +19,8 @@ public class UpdateCartItemRequest {
     @Positive(message = "Quantity must be positive")
     private Integer quantity;
 
+    private String idempotencyKey;
+
     public UpdateCartItemRequest() {}
 
     public UpdateCartItemRequest(String productId, String sku, Integer quantity) {
@@ -50,5 +52,13 @@ public class UpdateCartItemRequest {
 
     public void setQuantity(Integer quantity) {
         this.quantity = quantity;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
     }
 }
