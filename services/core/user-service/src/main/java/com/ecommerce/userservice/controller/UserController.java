@@ -4,6 +4,7 @@ import com.ecommerce.userservice.dto.CreateUserRequest;
 import com.ecommerce.userservice.dto.UpdateUserProfileRequest;
 import com.ecommerce.userservice.dto.UserProfileResponse;
 import com.ecommerce.userservice.service.UserService;
+import com.ecommerce.userservice.service.UserCacheService;
 import io.micrometer.core.annotation.Timed;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -207,5 +208,46 @@ public class UserController {
     @GetMapping("/health")
     public ResponseEntity<String> health() {
         return ResponseEntity.ok("User Service is healthy");
+    }
+
+    /**
+     * Warm up cache for tenant
+     */
+    @PostMapping("/cache/warmup")
+    @Timed(value = "user.cache_warmup", description = "Time taken to warm up cache")
+    public ResponseEntity<String> warmUpCache(
+            @RequestHeader("X-Tenant-ID") String tenantId) {
+        
+        logger.info("Warming up cache for tenant: {}", tenantId);
+        
+        userService.warmUpCache(tenantId);
+        return ResponseEntity.ok("Cache warm-up initiated for tenant: " + tenantId);
+    }
+
+    /**
+     * Get cache statistics
+     */
+    @GetMapping("/cache/stats")
+    @Timed(value = "user.cache_stats", description = "Time taken to get cache statistics")
+    public ResponseEntity<UserCacheService.CacheStatistics> getCacheStatistics() {
+        
+        logger.debug("Getting cache statistics");
+        
+        UserCacheService.CacheStatistics stats = userService.getCacheStatistics();
+        return ResponseEntity.ok(stats);
+    }
+
+    /**
+     * Check cache health
+     */
+    @GetMapping("/cache/health")
+    public ResponseEntity<String> cacheHealth() {
+        boolean isHealthy = userService.isCacheHealthy();
+        if (isHealthy) {
+            return ResponseEntity.ok("Cache is healthy");
+        } else {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body("Cache is unhealthy");
+        }
     }
 }

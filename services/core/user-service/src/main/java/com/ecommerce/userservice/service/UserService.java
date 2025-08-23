@@ -11,6 +11,7 @@ import com.ecommerce.userservice.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,12 +30,15 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserPreferencesRepository userPreferencesRepository;
+    private final UserCacheService userCacheService;
 
     @Autowired
     public UserService(UserRepository userRepository, 
-                      UserPreferencesRepository userPreferencesRepository) {
+                      UserPreferencesRepository userPreferencesRepository,
+                      UserCacheService userCacheService) {
         this.userRepository = userRepository;
         this.userPreferencesRepository = userPreferencesRepository;
+        this.userCacheService = userCacheService;
     }
 
     /**
@@ -74,22 +78,36 @@ public class UserService {
     }
 
     /**
-     * Get user profile by auth user ID
+     * Get user profile by auth user ID with cache-aside pattern
      */
     @Transactional(readOnly = true)
     public UserProfileResponse getUserProfile(String tenantId, Long authUserId) {
         logger.debug("Retrieving user profile for tenant: {} with authUserId: {}", tenantId, authUserId);
 
+        // Try to get from cache first
+        Optional<UserProfileResponse> cachedProfile = userCacheService.getUserProfileFromCache(tenantId, authUserId);
+        if (cachedProfile.isPresent()) {
+            logger.debug("Retrieved user profile from cache for authUserId: {}", authUserId);
+            return cachedProfile.get();
+        }
+
+        // Cache miss - get from database
         User user = userRepository.findByAuthUserIdAndTenantId(authUserId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with auth user ID: " + authUserId));
 
-        return new UserProfileResponse(user);
+        UserProfileResponse userProfile = new UserProfileResponse(user);
+        
+        // Put in cache for future requests
+        userCacheService.putUserProfileInCache(tenantId, authUserId, userProfile);
+        
+        return userProfile;
     }
 
     /**
-     * Get user profile by user ID
+     * Get user profile by user ID with caching
      */
     @Transactional(readOnly = true)
+    @Cacheable(value = "user-profiles", key = "#tenantId + ':id:' + #userId")
     public UserProfileResponse getUserProfileById(String tenantId, Long userId) {
         logger.debug("Retrieving user profile for tenant: {} with userId: {}", tenantId, userId);
 
@@ -100,7 +118,7 @@ public class UserService {
     }
 
     /**
-     * Update user profile
+     * Update user profile with comprehensive cache invalidation
      */
     public UserProfileResponse updateUserProfile(String tenantId, Long authUserId, UpdateUserProfileRequest request) {
         logger.info("Updating user profile for tenant: {} with authUserId: {}", tenantId, authUserId);
@@ -108,13 +126,13 @@ public class UserService {
         User user = userRepository.findByAuthUserIdAndTenantId(authUserId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with auth user ID: " + authUserId));
 
+        String oldEmail = user.getEmail();
+
         // Check if email is being changed and if it's already taken
         if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmailAndTenantId(request.getEmail(), tenantId)) {
                 throw new DataIntegrityViolationException("Email already exists: " + request.getEmail());
             }
-            // Clear email cache
-            userRepository.evictUserCacheByEmail(tenantId, user.getEmail());
             user.setEmail(request.getEmail());
         }
 
@@ -140,15 +158,26 @@ public class UserService {
 
         User updatedUser = userRepository.save(user);
         
-        // Clear cache
-        userRepository.evictUserCache(tenantId, authUserId);
+        // Comprehensive cache invalidation
+        userCacheService.invalidateUserProfileCache(tenantId, authUserId);
+        userCacheService.invalidateUserProfileCacheByEmail(tenantId, oldEmail);
+        
+        // If email changed, also invalidate new email cache
+        if (!oldEmail.equals(updatedUser.getEmail())) {
+            userCacheService.invalidateUserProfileCacheByEmail(tenantId, updatedUser.getEmail());
+        }
+
+        // Warm up cache with updated data
+        UserProfileResponse updatedProfile = new UserProfileResponse(updatedUser);
+        userCacheService.putUserProfileInCache(tenantId, authUserId, updatedProfile);
+        userCacheService.putUserProfileByEmailInCache(tenantId, updatedUser.getEmail(), updatedProfile);
 
         logger.info("Successfully updated user profile with ID: {} for tenant: {}", updatedUser.getId(), tenantId);
-        return new UserProfileResponse(updatedUser);
+        return updatedProfile;
     }
 
     /**
-     * Delete user profile
+     * Delete user profile with comprehensive cache cleanup
      */
     public void deleteUser(String tenantId, Long authUserId) {
         logger.info("Deleting user profile for tenant: {} with authUserId: {}", tenantId, authUserId);
@@ -156,9 +185,9 @@ public class UserService {
         User user = userRepository.findByAuthUserIdAndTenantId(authUserId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with auth user ID: " + authUserId));
 
-        // Clear cache before deletion
-        userRepository.evictUserCache(tenantId, authUserId);
-        userRepository.evictUserCacheByEmail(tenantId, user.getEmail());
+        // Clear all related caches before deletion
+        userCacheService.invalidateUserProfileCache(tenantId, authUserId);
+        userCacheService.invalidateUserProfileCacheByEmail(tenantId, user.getEmail());
 
         userRepository.delete(user);
         logger.info("Successfully deleted user profile with ID: {} for tenant: {}", user.getId(), tenantId);
@@ -181,18 +210,34 @@ public class UserService {
     }
 
     /**
-     * Get user by email
+     * Get user by email with cache-aside pattern
      */
     @Transactional(readOnly = true)
     public Optional<UserProfileResponse> getUserByEmail(String tenantId, String email) {
-        return userRepository.findByEmailAndTenantId(email, tenantId)
-                .map(UserProfileResponse::new);
+        // Try to get from cache first
+        Optional<UserProfileResponse> cachedProfile = userCacheService.getUserProfileByEmailFromCache(tenantId, email);
+        if (cachedProfile.isPresent()) {
+            logger.debug("Retrieved user profile from cache by email: {}", email);
+            return cachedProfile;
+        }
+
+        // Cache miss - get from database
+        Optional<User> userOpt = userRepository.findByEmailAndTenantId(email, tenantId);
+        if (userOpt.isPresent()) {
+            UserProfileResponse userProfile = new UserProfileResponse(userOpt.get());
+            // Put in cache for future requests
+            userCacheService.putUserProfileByEmailInCache(tenantId, email, userProfile);
+            return Optional.of(userProfile);
+        }
+        
+        return Optional.empty();
     }
 
     /**
-     * Search users by name or email
+     * Search users by name or email with caching
      */
     @Transactional(readOnly = true)
+    @Cacheable(value = "user-search", key = "#tenantId + ':search:' + #searchTerm")
     public List<UserProfileResponse> searchUsers(String tenantId, String searchTerm) {
         logger.debug("Searching users for tenant: {} with term: {}", tenantId, searchTerm);
 
@@ -216,10 +261,33 @@ public class UserService {
     }
 
     /**
-     * Get user count for tenant
+     * Get user count for tenant with caching
      */
     @Transactional(readOnly = true)
+    @Cacheable(value = "user-count", key = "#tenantId")
     public long getUserCount(String tenantId) {
         return userRepository.countByTenantId(tenantId);
+    }
+
+    /**
+     * Warm up cache for tenant
+     */
+    public void warmUpCache(String tenantId) {
+        logger.info("Warming up cache for tenant: {}", tenantId);
+        userCacheService.warmUpUserCache(tenantId);
+    }
+
+    /**
+     * Get cache statistics
+     */
+    public UserCacheService.CacheStatistics getCacheStatistics() {
+        return userCacheService.getCacheStatistics();
+    }
+
+    /**
+     * Check cache health
+     */
+    public boolean isCacheHealthy() {
+        return userCacheService.isCacheHealthy();
     }
 }

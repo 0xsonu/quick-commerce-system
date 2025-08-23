@@ -95,4 +95,10 @@ public interface UserRepository extends TenantAwareRepository<User, Long> {
     default void evictUserCacheByEmail(String tenantId, String email) {
         // Method to trigger cache eviction
     }
+
+    /**
+     * Find all distinct tenant IDs for cache warming
+     */
+    @Query("SELECT DISTINCT u.tenantId FROM User u")
+    List<String> findDistinctTenantIds();
 }

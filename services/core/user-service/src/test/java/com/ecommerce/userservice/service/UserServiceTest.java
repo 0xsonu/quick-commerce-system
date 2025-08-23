@@ -37,6 +37,9 @@ class UserServiceTest {
     @Mock
     private UserPreferencesRepository userPreferencesRepository;
 
+    @Mock
+    private UserCacheService userCacheService;
+
     @InjectMocks
     private UserService userService;
 
@@ -127,6 +130,7 @@ class UserServiceTest {
     @Test
     void getUserProfile_Success() {
         // Given
+        when(userCacheService.getUserProfileFromCache(tenantId, authUserId)).thenReturn(Optional.empty());
         when(userRepository.findByAuthUserIdAndTenantId(authUserId, tenantId)).thenReturn(Optional.of(testUser));
 
         // When
@@ -138,18 +142,39 @@ class UserServiceTest {
         assertEquals(testUser.getEmail(), response.getEmail());
         assertEquals(testUser.getFirstName(), response.getFirstName());
 
+        verify(userCacheService).getUserProfileFromCache(tenantId, authUserId);
         verify(userRepository).findByAuthUserIdAndTenantId(authUserId, tenantId);
+        verify(userCacheService).putUserProfileInCache(eq(tenantId), eq(authUserId), any(UserProfileResponse.class));
+    }
+
+    @Test
+    void getUserProfile_CacheHit() {
+        // Given
+        UserProfileResponse cachedResponse = new UserProfileResponse(testUser);
+        when(userCacheService.getUserProfileFromCache(tenantId, authUserId)).thenReturn(Optional.of(cachedResponse));
+
+        // When
+        UserProfileResponse response = userService.getUserProfile(tenantId, authUserId);
+
+        // Then
+        assertNotNull(response);
+        assertEquals(testUser.getId(), response.getId());
+
+        verify(userCacheService).getUserProfileFromCache(tenantId, authUserId);
+        verify(userRepository, never()).findByAuthUserIdAndTenantId(authUserId, tenantId);
     }
 
     @Test
     void getUserProfile_UserNotFound_ThrowsException() {
         // Given
+        when(userCacheService.getUserProfileFromCache(tenantId, authUserId)).thenReturn(Optional.empty());
         when(userRepository.findByAuthUserIdAndTenantId(authUserId, tenantId)).thenReturn(Optional.empty());
 
         // When & Then
         assertThrows(ResourceNotFoundException.class, 
                     () -> userService.getUserProfile(tenantId, authUserId));
 
+        verify(userCacheService).getUserProfileFromCache(tenantId, authUserId);
         verify(userRepository).findByAuthUserIdAndTenantId(authUserId, tenantId);
     }
 
@@ -183,7 +208,10 @@ class UserServiceTest {
         assertNotNull(response);
         verify(userRepository).findByAuthUserIdAndTenantId(authUserId, tenantId);
         verify(userRepository).save(testUser);
-        verify(userRepository).evictUserCache(tenantId, authUserId);
+        verify(userCacheService).invalidateUserProfileCache(tenantId, authUserId);
+        verify(userCacheService).invalidateUserProfileCacheByEmail(tenantId, testUser.getEmail());
+        verify(userCacheService).putUserProfileInCache(eq(tenantId), eq(authUserId), any(UserProfileResponse.class));
+        verify(userCacheService).putUserProfileByEmailInCache(eq(tenantId), eq(testUser.getEmail()), any(UserProfileResponse.class));
     }
 
     @Test
@@ -200,7 +228,9 @@ class UserServiceTest {
         // Then
         assertNotNull(response);
         verify(userRepository).existsByEmailAndTenantId("newemail@example.com", tenantId);
-        verify(userRepository).evictUserCacheByEmail(tenantId, "test@example.com");
+        verify(userCacheService).invalidateUserProfileCache(tenantId, authUserId);
+        verify(userCacheService).invalidateUserProfileCacheByEmail(tenantId, "test@example.com");
+        verify(userCacheService).invalidateUserProfileCacheByEmail(tenantId, "newemail@example.com");
         verify(userRepository).save(testUser);
     }
 
@@ -229,8 +259,8 @@ class UserServiceTest {
 
         // Then
         verify(userRepository).findByAuthUserIdAndTenantId(authUserId, tenantId);
-        verify(userRepository).evictUserCache(tenantId, authUserId);
-        verify(userRepository).evictUserCacheByEmail(tenantId, testUser.getEmail());
+        verify(userCacheService).invalidateUserProfileCache(tenantId, authUserId);
+        verify(userCacheService).invalidateUserProfileCacheByEmail(tenantId, testUser.getEmail());
         verify(userRepository).delete(testUser);
     }
 
@@ -291,6 +321,7 @@ class UserServiceTest {
     void getUserByEmail_Success() {
         // Given
         String email = "test@example.com";
+        when(userCacheService.getUserProfileByEmailFromCache(tenantId, email)).thenReturn(Optional.empty());
         when(userRepository.findByEmailAndTenantId(email, tenantId)).thenReturn(Optional.of(testUser));
 
         // When
@@ -299,7 +330,26 @@ class UserServiceTest {
         // Then
         assertTrue(response.isPresent());
         assertEquals(testUser.getId(), response.get().getId());
+        verify(userCacheService).getUserProfileByEmailFromCache(tenantId, email);
         verify(userRepository).findByEmailAndTenantId(email, tenantId);
+        verify(userCacheService).putUserProfileByEmailInCache(eq(tenantId), eq(email), any(UserProfileResponse.class));
+    }
+
+    @Test
+    void getUserByEmail_CacheHit() {
+        // Given
+        String email = "test@example.com";
+        UserProfileResponse cachedResponse = new UserProfileResponse(testUser);
+        when(userCacheService.getUserProfileByEmailFromCache(tenantId, email)).thenReturn(Optional.of(cachedResponse));
+
+        // When
+        Optional<UserProfileResponse> response = userService.getUserByEmail(tenantId, email);
+
+        // Then
+        assertTrue(response.isPresent());
+        assertEquals(testUser.getId(), response.get().getId());
+        verify(userCacheService).getUserProfileByEmailFromCache(tenantId, email);
+        verify(userRepository, never()).findByEmailAndTenantId(email, tenantId);
     }
 
     @Test
@@ -347,5 +397,57 @@ class UserServiceTest {
         // Then
         assertEquals(expectedCount, count);
         verify(userRepository).countByTenantId(tenantId);
+    }
+
+    @Test
+    void warmUpCache_Success() {
+        // When
+        userService.warmUpCache(tenantId);
+
+        // Then
+        verify(userCacheService).warmUpUserCache(tenantId);
+    }
+
+    @Test
+    void getCacheStatistics_Success() {
+        // Given
+        UserCacheService.CacheStatistics expectedStats = new UserCacheService.CacheStatistics(100L, 80L, 20L);
+        when(userCacheService.getCacheStatistics()).thenReturn(expectedStats);
+
+        // When
+        UserCacheService.CacheStatistics stats = userService.getCacheStatistics();
+
+        // Then
+        assertNotNull(stats);
+        assertEquals(100L, stats.getCacheSize());
+        assertEquals(80L, stats.getHitCount());
+        assertEquals(20L, stats.getMissCount());
+        verify(userCacheService).getCacheStatistics();
+    }
+
+    @Test
+    void isCacheHealthy_ReturnsTrue() {
+        // Given
+        when(userCacheService.isCacheHealthy()).thenReturn(true);
+
+        // When
+        boolean isHealthy = userService.isCacheHealthy();
+
+        // Then
+        assertTrue(isHealthy);
+        verify(userCacheService).isCacheHealthy();
+    }
+
+    @Test
+    void isCacheHealthy_ReturnsFalse() {
+        // Given
+        when(userCacheService.isCacheHealthy()).thenReturn(false);
+
+        // When
+        boolean isHealthy = userService.isCacheHealthy();
+
+        // Then
+        assertFalse(isHealthy);
+        verify(userCacheService).isCacheHealthy();
     }
 }
