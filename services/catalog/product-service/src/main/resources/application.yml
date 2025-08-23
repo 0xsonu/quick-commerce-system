@@ -7,6 +7,7 @@ spring:
   data:
     mongodb:
       uri: mongodb://admin:adminpassword@localhost:27017/ecommerce?authSource=admin
+      database: ecommerce
   redis:
     host: localhost
     port: 6379
@@ -16,6 +17,10 @@ spring:
         max-active: 8
         max-idle: 8
         min-idle: 0
+  cache:
+    type: redis
+    redis:
+      time-to-live: 1800000 # 30 minutes in milliseconds
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
