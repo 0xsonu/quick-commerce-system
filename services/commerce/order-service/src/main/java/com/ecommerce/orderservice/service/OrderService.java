@@ -22,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -36,29 +35,69 @@ public class OrderService {
     private final ObjectMapper objectMapper;
     private final OrderSagaOrchestrator sagaOrchestrator;
     private final OrderEventPublisher eventPublisher;
+    private final IdempotencyService idempotencyService;
+    private final OrderNumberGenerator orderNumberGenerator;
 
     @Autowired
     public OrderService(OrderRepository orderRepository, 
                        OrderMapper orderMapper,
                        ObjectMapper objectMapper,
                        OrderSagaOrchestrator sagaOrchestrator,
-                       OrderEventPublisher eventPublisher) {
+                       OrderEventPublisher eventPublisher,
+                       IdempotencyService idempotencyService,
+                       OrderNumberGenerator orderNumberGenerator) {
         this.orderRepository = orderRepository;
         this.orderMapper = orderMapper;
         this.objectMapper = objectMapper;
         this.sagaOrchestrator = sagaOrchestrator;
         this.eventPublisher = eventPublisher;
+        this.idempotencyService = idempotencyService;
+        this.orderNumberGenerator = orderNumberGenerator;
     }
 
     @Transactional
     public OrderResponse createOrder(CreateOrderRequest request) {
+        return createOrderInternal(request, null);
+    }
+
+    @Transactional
+    public OrderResponse createOrderWithIdempotency(CreateOrderRequest request, String idempotencyToken) {
+        logger.info("Creating order with idempotency token for user: {} in tenant: {}", 
+                   request.getUserId(), TenantContext.getTenantId());
+
+        // Validate idempotency token and check for duplicates
+        IdempotencyService.IdempotencyValidationResult validationResult = 
+            idempotencyService.validateIdempotencyToken(idempotencyToken, request.getUserId(), request);
+
+        // If we have a cached result, return it
+        if (validationResult.isReturnCachedResult()) {
+            logger.debug("Returning cached order result for idempotency token: {}", idempotencyToken);
+            return validationResult.getCachedResponse();
+        }
+
+        try {
+            // Create the order
+            OrderResponse orderResponse = createOrderInternal(request, idempotencyToken);
+            
+            // Mark token as completed
+            idempotencyService.markTokenCompleted(idempotencyToken, orderResponse.getId(), orderResponse);
+            
+            return orderResponse;
+        } catch (Exception e) {
+            // Mark token as failed
+            idempotencyService.markTokenFailed(idempotencyToken, e.getMessage());
+            throw e;
+        }
+    }
+
+    private OrderResponse createOrderInternal(CreateOrderRequest request, String idempotencyToken) {
         logger.info("Creating order for user: {} in tenant: {}", 
                    request.getUserId(), TenantContext.getTenantId());
 
         validateCreateOrderRequest(request);
 
         // Generate unique order number
-        String orderNumber = generateOrderNumber();
+        String orderNumber = orderNumberGenerator.generateUniqueOrderNumber();
 
         // Create order entity
         Order order = new Order(TenantContext.getTenantId(), orderNumber, request.getUserId());
@@ -103,8 +142,9 @@ public class OrderService {
                 }
             });
 
-        logger.info("Order created successfully: {} for user: {}", 
-                   savedOrder.getOrderNumber(), savedOrder.getUserId());
+        logger.info("Order created successfully: {} for user: {} with idempotency token: {}", 
+                   savedOrder.getOrderNumber(), savedOrder.getUserId(), 
+                   idempotencyToken != null ? idempotencyToken : "none");
 
         return orderMapper.toResponse(savedOrder);
     }
@@ -279,12 +319,7 @@ public class OrderService {
         return sagaOrchestrator.getSagaState(orderId);
     }
 
-    private String generateOrderNumber() {
-        String prefix = "ORD";
-        String timestamp = String.valueOf(System.currentTimeMillis());
-        String uuid = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        return prefix + "-" + timestamp + "-" + uuid;
-    }
+
 
     /**
      * Publishes appropriate event based on order status change

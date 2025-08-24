@@ -85,3 +85,22 @@ CREATE TABLE order_saga_state (
     INDEX idx_status (status),
     INDEX idx_current_step (current_step)
 );
+
+-- Idempotency tokens for duplicate prevention
+CREATE TABLE idempotency_tokens (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    tenant_id VARCHAR(50) NOT NULL,
+    token VARCHAR(255) NOT NULL,
+    user_id BIGINT NOT NULL,
+    order_id BIGINT NULL,
+    request_hash VARCHAR(64) NOT NULL,
+    response_data TEXT,
+    status ENUM('PROCESSING', 'COMPLETED', 'FAILED') NOT NULL DEFAULT 'PROCESSING',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL,
+    UNIQUE KEY unique_tenant_token (tenant_id, token),
+    INDEX idx_expires_at (expires_at),
+    INDEX idx_tenant_user_hash (tenant_id, user_id, request_hash),
+    INDEX idx_status (status),
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL
+);

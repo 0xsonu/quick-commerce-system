@@ -36,11 +36,18 @@ public class OrderController {
     public ResponseEntity<ApiResponse<OrderResponse>> createOrder(
             @RequestHeader("X-Tenant-ID") String tenantId,
             @RequestHeader("X-User-ID") String userId,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody CreateOrderRequest request) {
         
-        logger.info("Creating order for user: {} in tenant: {}", userId, tenantId);
+        logger.info("Creating order for user: {} in tenant: {} with idempotency key: {}", 
+                   userId, tenantId, idempotencyKey != null ? "provided" : "none");
 
-        OrderResponse order = orderService.createOrder(request);
+        OrderResponse order;
+        if (idempotencyKey != null && !idempotencyKey.trim().isEmpty()) {
+            order = orderService.createOrderWithIdempotency(request, idempotencyKey);
+        } else {
+            order = orderService.createOrder(request);
+        }
         
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(ApiResponse.success(order, "Order created successfully"));
