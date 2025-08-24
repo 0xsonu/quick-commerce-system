@@ -35,16 +35,19 @@ public class OrderService {
     private final OrderMapper orderMapper;
     private final ObjectMapper objectMapper;
     private final OrderSagaOrchestrator sagaOrchestrator;
+    private final OrderEventPublisher eventPublisher;
 
     @Autowired
     public OrderService(OrderRepository orderRepository, 
                        OrderMapper orderMapper,
                        ObjectMapper objectMapper,
-                       OrderSagaOrchestrator sagaOrchestrator) {
+                       OrderSagaOrchestrator sagaOrchestrator,
+                       OrderEventPublisher eventPublisher) {
         this.orderRepository = orderRepository;
         this.orderMapper = orderMapper;
         this.objectMapper = objectMapper;
         this.sagaOrchestrator = sagaOrchestrator;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -87,6 +90,18 @@ public class OrderService {
 
         // Save order
         Order savedOrder = orderRepository.save(order);
+
+        // Publish OrderCreated event
+        eventPublisher.publishOrderCreated(savedOrder)
+            .whenComplete((result, throwable) -> {
+                if (throwable != null) {
+                    logger.error("Failed to publish OrderCreated event for order: {}", 
+                               savedOrder.getId(), throwable);
+                } else {
+                    logger.debug("Successfully published OrderCreated event for order: {}", 
+                               savedOrder.getId());
+                }
+            });
 
         logger.info("Order created successfully: {} for user: {}", 
                    savedOrder.getOrderNumber(), savedOrder.getUserId());
@@ -133,6 +148,9 @@ public class OrderService {
             order.updateStatus(request.getNewStatus());
             Order savedOrder = orderRepository.save(order);
 
+            // Publish appropriate event based on new status
+            publishStatusChangeEvent(savedOrder, request.getNewStatus(), request.getReason());
+
             logger.info("Order status updated: {} from {} to {}", 
                        orderId, oldStatus, request.getNewStatus());
 
@@ -156,7 +174,19 @@ public class OrderService {
         }
 
         order.updateStatus(OrderStatus.CANCELLED);
-        orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+
+        // Publish OrderCancelled event
+        eventPublisher.publishOrderCancelled(savedOrder, reason)
+            .whenComplete((result, throwable) -> {
+                if (throwable != null) {
+                    logger.error("Failed to publish OrderCancelled event for order: {}", 
+                               orderId, throwable);
+                } else {
+                    logger.debug("Successfully published OrderCancelled event for order: {}", 
+                               orderId);
+                }
+            });
 
         logger.info("Order cancelled successfully: {}", orderId);
     }
@@ -254,5 +284,62 @@ public class OrderService {
         String timestamp = String.valueOf(System.currentTimeMillis());
         String uuid = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         return prefix + "-" + timestamp + "-" + uuid;
+    }
+
+    /**
+     * Publishes appropriate event based on order status change
+     */
+    private void publishStatusChangeEvent(Order order, OrderStatus newStatus, String reason) {
+        switch (newStatus) {
+            case CONFIRMED:
+                eventPublisher.publishOrderConfirmed(order, "payment-id-placeholder")
+                    .whenComplete((result, throwable) -> {
+                        if (throwable != null) {
+                            logger.error("Failed to publish OrderConfirmed event for order: {}", 
+                                       order.getId(), throwable);
+                        }
+                    });
+                break;
+            case PROCESSING:
+                eventPublisher.publishOrderProcessing(order)
+                    .whenComplete((result, throwable) -> {
+                        if (throwable != null) {
+                            logger.error("Failed to publish OrderProcessing event for order: {}", 
+                                       order.getId(), throwable);
+                        }
+                    });
+                break;
+            case SHIPPED:
+                eventPublisher.publishOrderShipped(order, "tracking-placeholder", "carrier-placeholder", null)
+                    .whenComplete((result, throwable) -> {
+                        if (throwable != null) {
+                            logger.error("Failed to publish OrderShipped event for order: {}", 
+                                       order.getId(), throwable);
+                        }
+                    });
+                break;
+            case DELIVERED:
+                eventPublisher.publishOrderDelivered(order, "tracking-placeholder", "carrier-placeholder", 
+                                                   LocalDateTime.now(), null)
+                    .whenComplete((result, throwable) -> {
+                        if (throwable != null) {
+                            logger.error("Failed to publish OrderDelivered event for order: {}", 
+                                       order.getId(), throwable);
+                        }
+                    });
+                break;
+            case CANCELLED:
+                eventPublisher.publishOrderCancelled(order, reason != null ? reason : "Status update")
+                    .whenComplete((result, throwable) -> {
+                        if (throwable != null) {
+                            logger.error("Failed to publish OrderCancelled event for order: {}", 
+                                       order.getId(), throwable);
+                        }
+                    });
+                break;
+            default:
+                logger.debug("No event publishing needed for status: {}", newStatus);
+                break;
+        }
     }
 }

@@ -21,6 +21,8 @@ public abstract class DomainEvent {
     
     @NotBlank(message = "Event type is required")
     private String eventType;
+    
+    private String correlationId;
 
     public DomainEvent() {
         this.eventId = UUID.randomUUID().toString();
@@ -63,5 +65,13 @@ public abstract class DomainEvent {
 
     public void setEventType(String eventType) {
         this.eventType = eventType;
+    }
+
+    public String getCorrelationId() {
+        return correlationId;
+    }
+
+    public void setCorrelationId(String correlationId) {
+        this.correlationId = correlationId;
     }
 }

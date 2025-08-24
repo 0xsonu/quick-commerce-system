@@ -41,6 +41,12 @@ public interface OrderRepository extends TenantAwareRepository<Order, Long> {
                                      @Param("startDate") LocalDateTime startDate,
                                      @Param("endDate") LocalDateTime endDate);
 
+    @Query("SELECT o FROM Order o WHERE o.tenantId = :tenantId AND o.createdAt BETWEEN :startDate AND :endDate")
+    Page<Order> findOrdersByDateRange(@Param("tenantId") String tenantId,
+                                     @Param("startDate") LocalDateTime startDate,
+                                     @Param("endDate") LocalDateTime endDate,
+                                     Pageable pageable);
+
     @Query("SELECT o FROM Order o WHERE o.tenantId = :tenantId AND o.status IN :statuses")
     List<Order> findByStatusIn(@Param("tenantId") String tenantId, 
                               @Param("statuses") List<OrderStatus> statuses);
