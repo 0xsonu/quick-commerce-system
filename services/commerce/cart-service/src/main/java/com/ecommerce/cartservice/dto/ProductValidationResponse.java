@@ -96,6 +96,26 @@ public class ProductValidationResponse {
         this.brand = brand;
     }
 
+    // Additional fields for gRPC compatibility
+    private boolean valid;
+    private String currency;
+
+    public boolean isValid() {
+        return valid;
+    }
+
+    public void setValid(boolean valid) {
+        this.valid = valid;
+    }
+
+    public String getCurrency() {
+        return currency;
+    }
+
+    public void setCurrency(String currency) {
+        this.currency = currency;
+    }
+
     /**
      * Check if product is available for purchase
      */

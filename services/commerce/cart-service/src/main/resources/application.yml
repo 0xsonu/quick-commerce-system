@@ -67,6 +67,24 @@ server:
   servlet:
     context-path: /
 
+# gRPC Client Configuration
+grpc:
+  client:
+    product-service:
+      address: "static://product-service:9084"
+      negotiation-type: plaintext
+      enable-keep-alive: true
+      keep-alive-time: 30s
+      keep-alive-timeout: 5s
+      keep-alive-without-calls: true
+    inventory-service:
+      address: "static://inventory-service:9085"
+      negotiation-type: plaintext
+      enable-keep-alive: true
+      keep-alive-time: 30s
+      keep-alive-timeout: 5s
+      keep-alive-without-calls: true
+
 # Management and Monitoring
 management:
   endpoints:

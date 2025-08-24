@@ -1,9 +1,9 @@
 package com.ecommerce.cartservice.service;
 
-import com.ecommerce.cartservice.client.InventoryServiceClient;
-import com.ecommerce.cartservice.client.ProductServiceClient;
+import com.ecommerce.cartservice.client.grpc.InventoryServiceGrpcClient;
+import com.ecommerce.cartservice.client.grpc.ProductServiceGrpcClient;
 import com.ecommerce.cartservice.dto.AddToCartRequest;
-import com.ecommerce.cartservice.dto.InventoryAvailabilityResponse;
+import com.ecommerce.cartservice.dto.InventoryCheckResponse;
 import com.ecommerce.cartservice.dto.ProductValidationResponse;
 import com.ecommerce.cartservice.exception.CartValidationException;
 import com.ecommerce.cartservice.exception.InsufficientInventoryException;
@@ -26,14 +26,14 @@ public class CartValidationService {
 
     private static final Logger logger = LoggerFactory.getLogger(CartValidationService.class);
 
-    private final ProductServiceClient productServiceClient;
-    private final InventoryServiceClient inventoryServiceClient;
+    private final ProductServiceGrpcClient productServiceGrpcClient;
+    private final InventoryServiceGrpcClient inventoryServiceGrpcClient;
 
     @Autowired
-    public CartValidationService(ProductServiceClient productServiceClient,
-                                InventoryServiceClient inventoryServiceClient) {
-        this.productServiceClient = productServiceClient;
-        this.inventoryServiceClient = inventoryServiceClient;
+    public CartValidationService(ProductServiceGrpcClient productServiceGrpcClient,
+                                InventoryServiceGrpcClient inventoryServiceGrpcClient) {
+        this.productServiceGrpcClient = productServiceGrpcClient;
+        this.inventoryServiceGrpcClient = inventoryServiceGrpcClient;
     }
 
     /**
@@ -97,17 +97,16 @@ public class CartValidationService {
      * Validate product exists and is available for purchase
      */
     private ProductValidationResponse validateProduct(String tenantId, String productId, String sku) {
-        Optional<ProductValidationResponse> productOpt = productServiceClient.validateProductWithSku(tenantId, productId, sku);
+        ProductValidationResponse product = productServiceGrpcClient.validateProduct(productId, sku);
         
-        if (productOpt.isEmpty()) {
+        if (!product.isValid()) {
             logger.warn("Product {} with SKU {} not found for tenant {}", productId, sku, tenantId);
             throw new ProductNotAvailableException("Product not found: " + productId);
         }
 
-        ProductValidationResponse product = productOpt.get();
-        if (!product.isAvailableForPurchase()) {
-            logger.warn("Product {} is not available for purchase: status={}, active={}", 
-                       productId, product.getStatus(), product.isActive());
+        if (!product.isActive()) {
+            logger.warn("Product {} is not available for purchase: active={}", 
+                       productId, product.isActive());
             throw new ProductNotAvailableException("Product is not available for purchase: " + productId);
         }
 
@@ -140,16 +139,9 @@ public class CartValidationService {
      * Validate inventory availability
      */
     private void validateInventoryAvailability(String tenantId, String productId, Integer requestedQuantity) {
-        Optional<InventoryAvailabilityResponse> inventoryOpt = 
-            inventoryServiceClient.checkAvailability(tenantId, productId, requestedQuantity);
+        InventoryCheckResponse inventory = inventoryServiceGrpcClient.checkAvailability(productId, requestedQuantity);
         
-        if (inventoryOpt.isEmpty()) {
-            logger.warn("Could not check inventory for product {} in tenant {}", productId, tenantId);
-            throw new CartValidationException("Unable to verify inventory availability for product: " + productId);
-        }
-
-        InventoryAvailabilityResponse inventory = inventoryOpt.get();
-        if (!inventory.canFulfillRequest()) {
+        if (!inventory.isAvailable()) {
             logger.warn("Insufficient inventory for product {}: requested={}, available={}", 
                        productId, requestedQuantity, inventory.getAvailableQuantity());
             throw new InsufficientInventoryException(
