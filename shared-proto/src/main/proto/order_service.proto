@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package ecommerce.order;
+
+import "common.proto";
+
+option java_package = "com.ecommerce.orderservice.proto";
+option java_outer_classname = "OrderServiceProtos";
+
+// Order Service gRPC interface
+service OrderService {
+  rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
+  rpc ValidateOrder(ValidateOrderRequest) returns (ValidateOrderResponse);
+  rpc UpdateOrderStatus(UpdateOrderStatusRequest) returns (UpdateOrderStatusResponse);
+  rpc GetOrdersByUser(GetOrdersByUserRequest) returns (GetOrdersByUserResponse);
+}
+
+// Get order by ID
+message GetOrderRequest {
+  ecommerce.common.TenantContext context = 1;
+  int64 order_id = 2;
+}
+
+message GetOrderResponse {
+  Order order = 1;
+}
+
+// Validate order for payment/shipping operations
+message ValidateOrderRequest {
+  ecommerce.common.TenantContext context = 1;
+  int64 order_id = 2;
+}
+
+message ValidateOrderResponse {
+  bool is_valid = 1;
+  string status = 2;
+  ecommerce.common.Money total_amount = 3;
+  int64 user_id = 4;
+}
+
+// Update order status
+message UpdateOrderStatusRequest {
+  ecommerce.common.TenantContext context = 1;
+  int64 order_id = 2;
+  string new_status = 3;
+  string reason = 4;
+}
+
+message UpdateOrderStatusResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+// Get orders by user
+message GetOrdersByUserRequest {
+  ecommerce.common.TenantContext context = 1;
+  int64 user_id = 2;
+  ecommerce.common.PageRequest page_request = 3;
+}
+
+message GetOrdersByUserResponse {
+  repeated Order orders = 1;
+  ecommerce.common.PageResponse page_response = 2;
+}
+
+// Order data model
+message Order {
+  int64 id = 1;
+  string order_number = 2;
+  int64 user_id = 3;
+  string status = 4;
+  ecommerce.common.Money subtotal = 5;
+  ecommerce.common.Money tax_amount = 6;
+  ecommerce.common.Money shipping_amount = 7;
+  ecommerce.common.Money total_amount = 8;
+  ecommerce.common.Address billing_address = 9;
+  ecommerce.common.Address shipping_address = 10;
+  repeated OrderItem items = 11;
+  int64 created_at = 12;
+  int64 updated_at = 13;
+}
+
+// Order item data model
+message OrderItem {
+  int64 id = 1;
+  string product_id = 2;
+  string sku = 3;
+  string product_name = 4;
+  int32 quantity = 5;
+  ecommerce.common.Money unit_price = 6;
+  ecommerce.common.Money total_price = 7;
+}

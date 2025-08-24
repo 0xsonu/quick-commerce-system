@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package ecommerce.product;
+
+import "common.proto";
+
+option java_package = "com.ecommerce.productservice.proto";
+option java_outer_classname = "ProductServiceProtos";
+
+// Product Service gRPC interface
+service ProductService {
+  rpc GetProduct(GetProductRequest) returns (GetProductResponse);
+  rpc ValidateProduct(ValidateProductRequest) returns (ValidateProductResponse);
+  rpc GetProductsByIds(GetProductsByIdsRequest) returns (GetProductsByIdsResponse);
+}
+
+// Get product by ID
+message GetProductRequest {
+  ecommerce.common.TenantContext context = 1;
+  string product_id = 2;
+}
+
+message GetProductResponse {
+  Product product = 1;
+}
+
+// Validate product for cart/order operations
+message ValidateProductRequest {
+  ecommerce.common.TenantContext context = 1;
+  string product_id = 2;
+  string sku = 3;
+}
+
+message ValidateProductResponse {
+  bool is_valid = 1;
+  string product_id = 2;
+  string sku = 3;
+  string name = 4;
+  ecommerce.common.Money price = 5;
+  bool is_active = 6;
+}
+
+// Get multiple products by IDs
+message GetProductsByIdsRequest {
+  ecommerce.common.TenantContext context = 1;
+  repeated string product_ids = 2;
+}
+
+message GetProductsByIdsResponse {
+  repeated Product products = 1;
+}
+
+// Product data model
+message Product {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string sku = 4;
+  ecommerce.common.Money price = 5;
+  string category = 6;
+  string brand = 7;
+  bool is_active = 8;
+  repeated string image_urls = 9;
+  map<string, string> attributes = 10;
+}

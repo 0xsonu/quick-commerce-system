@@ -36,6 +36,9 @@
         <micrometer.version>1.12.1</micrometer.version>
         <opentelemetry.version>1.33.0</opentelemetry.version>
         
+        <!-- gRPC -->
+        <grpc-spring-boot-starter.version>2.15.0.RELEASE</grpc-spring-boot-starter.version>
+        
         <!-- Testing -->
         <junit.version>5.10.1</junit.version>
         <testcontainers.version>1.19.3</testcontainers.version>
@@ -52,6 +55,7 @@
         <module>shared-models</module>
         <module>shared-utils</module>
         <module>shared-security</module>
+        <module>shared-proto</module>
         
         <!-- Core Services -->
         <module>services/core/api-gateway</module>
@@ -141,6 +145,13 @@
                 <version>${opentelemetry.version}</version>
             </dependency>
 
+            <!-- gRPC -->
+            <dependency>
+                <groupId>net.devh</groupId>
+                <artifactId>grpc-spring-boot-starter</artifactId>
+                <version>${grpc-spring-boot-starter.version}</version>
+            </dependency>
+
             <!-- Testing -->
             <dependency>
                 <groupId>org.junit.jupiter</groupId>
@@ -180,6 +191,12 @@
             <dependency>
                 <groupId>com.ecommerce</groupId>
                 <artifactId>shared-security</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>com.ecommerce</groupId>
+                <artifactId>shared-proto</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>

@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package ecommerce.payment;
+
+import "common.proto";
+
+option java_package = "com.ecommerce.paymentservice.proto";
+option java_outer_classname = "PaymentServiceProtos";
+
+// Payment Service gRPC interface
+service PaymentService {
+  rpc ProcessPayment(ProcessPaymentRequest) returns (ProcessPaymentResponse);
+  rpc GetPaymentStatus(GetPaymentStatusRequest) returns (GetPaymentStatusResponse);
+  rpc RefundPayment(RefundPaymentRequest) returns (RefundPaymentResponse);
+}
+
+// Process payment for order
+message ProcessPaymentRequest {
+  ecommerce.common.TenantContext context = 1;
+  int64 order_id = 2;
+  ecommerce.common.Money amount = 3;
+  string payment_method = 4;  // CREDIT_CARD, DEBIT_CARD, etc.
+  string payment_token = 5;   // Tokenized payment info
+  string idempotency_key = 6;
+}
+
+message ProcessPaymentResponse {
+  bool success = 1;
+  string payment_id = 2;
+  string transaction_id = 3;
+  string status = 4;  // PENDING, COMPLETED, FAILED
+  string error_message = 5;
+}
+
+// Get payment status
+message GetPaymentStatusRequest {
+  ecommerce.common.TenantContext context = 1;
+  string payment_id = 2;
+}
+
+message GetPaymentStatusResponse {
+  string payment_id = 1;
+  string status = 2;
+  ecommerce.common.Money amount = 3;
+  string transaction_id = 4;
+}
+
+// Refund payment
+message RefundPaymentRequest {
+  ecommerce.common.TenantContext context = 1;
+  string payment_id = 2;
+  ecommerce.common.Money amount = 3;
+  string reason = 4;
+}
+
+message RefundPaymentResponse {
+  bool success = 1;
+  string refund_id = 2;
+  string error_message = 3;
+}

@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package ecommerce.user;
+
+import "common.proto";
+
+option java_package = "com.ecommerce.userservice.proto";
+option java_outer_classname = "UserServiceProtos";
+
+// User Service gRPC interface
+service UserService {
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+  rpc GetUserAddresses(GetUserAddressesRequest) returns (GetUserAddressesResponse);
+  rpc ValidateUser(ValidateUserRequest) returns (ValidateUserResponse);
+}
+
+// Get user by ID
+message GetUserRequest {
+  ecommerce.common.TenantContext context = 1;
+  int64 user_id = 2;
+}
+
+message GetUserResponse {
+  User user = 1;
+}
+
+// Get user addresses
+message GetUserAddressesRequest {
+  ecommerce.common.TenantContext context = 1;
+  int64 user_id = 2;
+}
+
+message GetUserAddressesResponse {
+  repeated UserAddress addresses = 1;
+}
+
+// Validate user for order operations
+message ValidateUserRequest {
+  ecommerce.common.TenantContext context = 1;
+  int64 user_id = 2;
+}
+
+message ValidateUserResponse {
+  bool is_valid = 1;
+  bool is_active = 2;
+  string email = 3;
+}
+
+// User data model
+message User {
+  int64 id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string email = 4;
+  string phone = 5;
+  bool is_active = 6;
+}
+
+// User address data model
+message UserAddress {
+  int64 id = 1;
+  string type = 2;  // BILLING, SHIPPING
+  ecommerce.common.Address address = 3;
+  bool is_default = 4;
+}

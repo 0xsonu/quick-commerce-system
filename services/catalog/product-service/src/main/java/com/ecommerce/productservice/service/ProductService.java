@@ -18,6 +18,7 @@ import org.springframework.util.StringUtils;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,6 +42,23 @@ public class ProductService {
             .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + productId));
         
         return new ProductResponse(product);
+    }
+
+    /**
+     * Get product by ID for internal gRPC calls (returns Optional)
+     */
+    @Cacheable(value = "products", key = "T(com.ecommerce.shared.utils.TenantContext).getTenantId() + ':' + #productId")
+    public Optional<Product> getProductById(String productId) {
+        String tenantId = com.ecommerce.shared.utils.TenantContext.getTenantId();
+        return productRepository.findByTenantIdAndId(tenantId, productId);
+    }
+
+    /**
+     * Get multiple products by IDs for internal gRPC calls
+     */
+    public List<Product> getProductsByIds(List<String> productIds) {
+        String tenantId = com.ecommerce.shared.utils.TenantContext.getTenantId();
+        return productRepository.findByTenantIdAndIdIn(tenantId, productIds);
     }
 
     @Cacheable(value = "product-search", key = "#tenantId + ':' + #sku")

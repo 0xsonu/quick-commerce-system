@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package ecommerce.inventory;
+
+import "common.proto";
+
+option java_package = "com.ecommerce.inventoryservice.proto";
+option java_outer_classname = "InventoryServiceProtos";
+
+// Inventory Service gRPC interface
+service InventoryService {
+  rpc CheckAvailability(CheckAvailabilityRequest) returns (CheckAvailabilityResponse);
+  rpc ReserveInventory(ReserveInventoryRequest) returns (ReserveInventoryResponse);
+  rpc ReleaseInventory(ReleaseInventoryRequest) returns (ReleaseInventoryResponse);
+  rpc GetStockLevel(GetStockLevelRequest) returns (GetStockLevelResponse);
+}
+
+// Check inventory availability
+message CheckAvailabilityRequest {
+  ecommerce.common.TenantContext context = 1;
+  string product_id = 2;
+  int32 requested_quantity = 3;
+}
+
+message CheckAvailabilityResponse {
+  bool is_available = 1;
+  int32 available_quantity = 2;
+  string product_id = 3;
+}
+
+// Reserve inventory for order
+message ReserveInventoryRequest {
+  ecommerce.common.TenantContext context = 1;
+  string product_id = 2;
+  int32 quantity = 3;
+  string reservation_id = 4;
+  int64 ttl_seconds = 5;
+}
+
+message ReserveInventoryResponse {
+  bool success = 1;
+  string reservation_id = 2;
+  string error_message = 3;
+}
+
+// Release inventory reservation
+message ReleaseInventoryRequest {
+  ecommerce.common.TenantContext context = 1;
+  string reservation_id = 2;
+}
+
+message ReleaseInventoryResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+// Get current stock level
+message GetStockLevelRequest {
+  ecommerce.common.TenantContext context = 1;
+  string product_id = 2;
+}
+
+message GetStockLevelResponse {
+  string product_id = 1;
+  int32 available_quantity = 2;
+  int32 reserved_quantity = 3;
+}

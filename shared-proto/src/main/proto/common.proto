@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package ecommerce.common;
+
+option java_package = "com.ecommerce.shared.proto";
+option java_outer_classname = "CommonProtos";
+
+// Tenant context for all service calls
+message TenantContext {
+  string tenant_id = 1;
+  string user_id = 2;
+  string correlation_id = 3;
+}
+
+// Money representation to avoid floating point issues
+message Money {
+  int64 amount_cents = 1;  // Amount in cents to avoid floating point issues
+  string currency = 2;
+}
+
+// Address information
+message Address {
+  string street_address = 1;
+  string city = 2;
+  string state = 3;
+  string postal_code = 4;
+  string country = 5;
+}
+
+// Pagination request
+message PageRequest {
+  int32 page = 1;
+  int32 size = 2;
+  string sort_by = 3;
+  string sort_direction = 4;
+}
+
+// Pagination response
+message PageResponse {
+  int32 page = 1;
+  int32 size = 2;
+  int64 total_elements = 3;
+  int32 total_pages = 4;
+}
+
+// Standard error response
+message ErrorResponse {
+  string code = 1;
+  string message = 2;
+  repeated string details = 3;
+  int64 timestamp = 4;
+}
