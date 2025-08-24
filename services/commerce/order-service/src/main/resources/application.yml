@@ -68,6 +68,9 @@ grpc:
     user-service:
       address: static://user-service:9081
       negotiation-type: plaintext
+    payment-service:
+      address: static://payment-service:9087
+      negotiation-type: plaintext
 
 # Management and Monitoring
 management:

@@ -7,6 +7,8 @@ import com.ecommerce.orderservice.entity.OrderStatus;
 import com.ecommerce.orderservice.exception.OrderNotFoundException;
 import com.ecommerce.orderservice.exception.OrderValidationException;
 import com.ecommerce.orderservice.repository.OrderRepository;
+import com.ecommerce.orderservice.saga.OrderSagaOrchestrator;
+import com.ecommerce.orderservice.saga.OrderSagaState;
 import com.ecommerce.shared.utils.TenantContext;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,14 +34,17 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
     private final ObjectMapper objectMapper;
+    private final OrderSagaOrchestrator sagaOrchestrator;
 
     @Autowired
     public OrderService(OrderRepository orderRepository, 
                        OrderMapper orderMapper,
-                       ObjectMapper objectMapper) {
+                       ObjectMapper objectMapper,
+                       OrderSagaOrchestrator sagaOrchestrator) {
         this.orderRepository = orderRepository;
         this.orderMapper = orderMapper;
         this.objectMapper = objectMapper;
+        this.sagaOrchestrator = sagaOrchestrator;
     }
 
     @Transactional
@@ -190,6 +195,58 @@ public class OrderService {
                 throw new OrderValidationException("Item unit price must be positive");
             }
         }
+    }
+
+    @Transactional
+    public OrderResponse processOrderWithSaga(CreateOrderRequest request, String paymentMethod, String paymentToken) {
+        logger.info("Processing order with saga for user: {} in tenant: {}", 
+                   request.getUserId(), TenantContext.getTenantId());
+
+        // First create the order in PENDING status
+        OrderResponse orderResponse = createOrder(request);
+        
+        // Start the saga process asynchronously
+        sagaOrchestrator.processOrder(orderResponse.getId(), paymentMethod, paymentToken)
+            .whenComplete((success, throwable) -> {
+                if (throwable != null) {
+                    logger.error("Saga processing failed for order {}: {}", 
+                               orderResponse.getId(), throwable.getMessage(), throwable);
+                } else if (success) {
+                    logger.info("Saga processing completed successfully for order {}", orderResponse.getId());
+                } else {
+                    logger.warn("Saga processing failed for order {}", orderResponse.getId());
+                }
+            });
+
+        return orderResponse;
+    }
+
+    @Transactional
+    public OrderResponse processExistingOrderWithSaga(Long orderId, String paymentMethod, String paymentToken) {
+        logger.info("Processing existing order with saga: {} in tenant: {}", orderId, TenantContext.getTenantId());
+
+        // Get the existing order
+        OrderResponse orderResponse = getOrder(orderId);
+        
+        // Start the saga process asynchronously
+        sagaOrchestrator.processOrder(orderId, paymentMethod, paymentToken)
+            .whenComplete((success, throwable) -> {
+                if (throwable != null) {
+                    logger.error("Saga processing failed for order {}: {}", 
+                               orderId, throwable.getMessage(), throwable);
+                } else if (success) {
+                    logger.info("Saga processing completed successfully for order {}", orderId);
+                } else {
+                    logger.warn("Saga processing failed for order {}", orderId);
+                }
+            });
+
+        return orderResponse;
+    }
+
+    @Transactional(readOnly = true)
+    public OrderSagaState getSagaState(Long orderId) {
+        return sagaOrchestrator.getSagaState(orderId);
     }
 
     private String generateOrderNumber() {

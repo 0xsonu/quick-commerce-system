@@ -2,6 +2,7 @@ package com.ecommerce.orderservice.controller;
 
 import com.ecommerce.orderservice.dto.*;
 import com.ecommerce.orderservice.entity.OrderStatus;
+import com.ecommerce.orderservice.saga.OrderSagaState;
 import com.ecommerce.orderservice.service.OrderService;
 import com.ecommerce.shared.utils.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -146,5 +147,36 @@ public class OrderController {
         boolean isValid = orderService.validateOrder(orderId);
         
         return ResponseEntity.ok(ApiResponse.success(isValid));
+    }
+
+    @PostMapping("/{orderId}/process")
+    public ResponseEntity<ApiResponse<OrderResponse>> processOrderWithSaga(
+            @RequestHeader("X-Tenant-ID") String tenantId,
+            @RequestHeader("X-User-ID") String userId,
+            @PathVariable Long orderId,
+            @Valid @RequestBody ProcessOrderRequest request) {
+        
+        logger.info("Processing order with saga: {} for user: {} in tenant: {}", orderId, userId, tenantId);
+
+        OrderResponse order = orderService.processExistingOrderWithSaga(orderId, request.getPaymentMethod(), request.getPaymentToken());
+        
+        return ResponseEntity.ok(ApiResponse.success(order, "Order processing started with saga"));
+    }
+
+    @GetMapping("/{orderId}/saga-status")
+    public ResponseEntity<ApiResponse<OrderSagaState>> getSagaStatus(
+            @RequestHeader("X-Tenant-ID") String tenantId,
+            @RequestHeader("X-User-ID") String userId,
+            @PathVariable Long orderId) {
+        
+        logger.debug("Getting saga status for order: {} for user: {} in tenant: {}", orderId, userId, tenantId);
+
+        OrderSagaState sagaState = orderService.getSagaState(orderId);
+        
+        if (sagaState == null) {
+            return ResponseEntity.ok(ApiResponse.success(null, "No saga found for this order"));
+        }
+        
+        return ResponseEntity.ok(ApiResponse.success(sagaState));
     }
 }
