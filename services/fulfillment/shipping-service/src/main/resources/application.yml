@@ -87,3 +87,8 @@ shipping:
   tracking-update-interval: 3600000 # 1 hour in milliseconds
   max-tracking-events: 50
   shipment-number-prefix: "SH"
+  default-carrier: "fedex"
+  default-service: "GROUND"
+  auto-ship-on-creation: true
+  tracking-update-batch-size: 50
+  tracking-update-enabled: true

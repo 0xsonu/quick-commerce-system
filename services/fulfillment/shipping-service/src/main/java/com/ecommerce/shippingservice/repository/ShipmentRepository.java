@@ -48,4 +48,6 @@ public interface ShipmentRepository extends TenantAwareRepository<Shipment, Long
 
     @Query("SELECT s FROM Shipment s WHERE s.tenantId = :tenantId AND s.status IN ('IN_TRANSIT', 'OUT_FOR_DELIVERY') AND s.estimatedDeliveryDate < :date")
     List<Shipment> findOverdueShipments(@Param("tenantId") String tenantId, @Param("date") LocalDate date);
+
+    Page<Shipment> findByStatusInAndTrackingNumberIsNotNull(List<ShipmentStatus> statuses, Pageable pageable);
 }
