@@ -32,6 +32,8 @@ public class NotificationService {
     private final NotificationPreferenceRepository preferenceRepository;
     private final NotificationLogRepository logRepository;
     private final NotificationTemplateEngine templateEngine;
+    private final NotificationPreferenceService preferenceService;
+    private final NotificationRetryService retryService;
     private final Map<NotificationChannel, NotificationProvider> providers;
 
     @Autowired
@@ -39,11 +41,15 @@ public class NotificationService {
                              NotificationPreferenceRepository preferenceRepository,
                              NotificationLogRepository logRepository,
                              NotificationTemplateEngine templateEngine,
+                             NotificationPreferenceService preferenceService,
+                             NotificationRetryService retryService,
                              List<NotificationProvider> providerList) {
         this.templateRepository = templateRepository;
         this.preferenceRepository = preferenceRepository;
         this.logRepository = logRepository;
         this.templateEngine = templateEngine;
+        this.preferenceService = preferenceService;
+        this.retryService = retryService;
         this.providers = providerList.stream()
             .collect(Collectors.toMap(NotificationProvider::getChannel, provider -> provider));
     }
@@ -62,9 +68,9 @@ public class NotificationService {
     public NotificationResponse sendNotification(NotificationRequest request) {
         String tenantId = TenantContext.getTenantId();
         
-        // Check user preferences
-        if (!isNotificationEnabled(tenantId, request.getUserId(), 
-                                  request.getNotificationType(), request.getChannel())) {
+        // Check user preferences using enhanced preference service
+        if (!preferenceService.isNotificationEnabled(request.getUserId(), 
+                                                    request.getNotificationType(), request.getChannel())) {
             logger.info("Notification disabled by user preference: userId={}, type={}, channel={}", 
                        request.getUserId(), request.getNotificationType(), request.getChannel());
             return createSkippedResponse(request, "Disabled by user preference");
@@ -104,26 +110,29 @@ public class NotificationService {
             // Get provider and send notification
             NotificationProvider provider = providers.get(request.getChannel());
             if (provider == null || !provider.isAvailable()) {
-                throw new NotificationException("Provider not available for channel: " + request.getChannel());
-            }
-
-            boolean sent = provider.sendNotification(request.getRecipient(), subject, content);
-            
-            if (sent) {
-                log.setStatus(NotificationStatus.SENT);
-                log.setSentAt(LocalDateTime.now());
-                logger.info("Notification sent successfully: userId={}, type={}, channel={}", 
-                           request.getUserId(), request.getNotificationType(), request.getChannel());
-            } else {
                 log.setStatus(NotificationStatus.FAILED);
-                log.setErrorMessage("Provider returned false");
+                log.setErrorMessage("Provider not available for channel: " + request.getChannel());
+            } else {
+                try {
+                    boolean sent = provider.sendNotification(request.getRecipient(), subject, content);
+                    
+                    if (sent) {
+                        log.setStatus(NotificationStatus.SENT);
+                        log.setSentAt(LocalDateTime.now());
+                        logger.info("Notification sent successfully: userId={}, type={}, channel={}", 
+                                   request.getUserId(), request.getNotificationType(), request.getChannel());
+                    } else {
+                        log.setStatus(NotificationStatus.FAILED);
+                        log.setErrorMessage("Provider returned false");
+                    }
+                } catch (NotificationException e) {
+                    log.setStatus(NotificationStatus.FAILED);
+                    log.setErrorMessage(e.getMessage());
+                    logger.error("Failed to send notification: userId={}, type={}, channel={}", 
+                                request.getUserId(), request.getNotificationType(), request.getChannel(), e);
+                }
             }
 
-        } catch (NotificationException e) {
-            log.setStatus(NotificationStatus.FAILED);
-            log.setErrorMessage(e.getMessage());
-            logger.error("Failed to send notification: userId={}, type={}, channel={}", 
-                        request.getUserId(), request.getNotificationType(), request.getChannel(), e);
         } catch (Exception e) {
             log.setStatus(NotificationStatus.FAILED);
             log.setErrorMessage("Unexpected error: " + e.getMessage());
@@ -131,9 +140,18 @@ public class NotificationService {
                         request.getUserId(), request.getNotificationType(), request.getChannel(), e);
         }
 
-        // Save log
+        // Save log first
         log = logRepository.save(log);
-        
+
+        // If notification failed, schedule for retry
+        if (log.getStatus() == NotificationStatus.FAILED && log.getRetryCount() == 0) {
+            try {
+                retryService.retryNotification(log.getId());
+            } catch (Exception e) {
+                logger.error("Failed to schedule notification retry: id={}", log.getId(), e);
+            }
+        }
+
         return mapToResponse(log);
     }
 

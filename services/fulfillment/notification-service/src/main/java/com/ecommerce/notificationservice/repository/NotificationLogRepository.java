@@ -29,6 +29,12 @@ public interface NotificationLogRepository extends TenantAwareRepository<Notific
             @Param("maxRetries") Integer maxRetries,
             @Param("cutoffTime") LocalDateTime cutoffTime);
 
+    @Query("SELECT nl FROM NotificationLog nl WHERE nl.status = 'FAILED' " +
+           "AND nl.retryCount < :maxRetries AND nl.updatedAt < :cutoffTime")
+    List<NotificationLog> findFailedNotificationsForRetry(
+            @Param("maxRetries") Integer maxRetries,
+            @Param("cutoffTime") LocalDateTime cutoffTime);
+
     @Query("SELECT COUNT(nl) FROM NotificationLog nl WHERE nl.tenantId = :tenantId " +
            "AND nl.status = :status AND nl.createdAt >= :fromDate")
     Long countByTenantIdAndStatusAndCreatedAtAfter(

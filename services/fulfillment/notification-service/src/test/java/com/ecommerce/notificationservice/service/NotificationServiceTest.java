@@ -15,6 +15,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import static org.mockito.Mockito.*;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,8 +56,14 @@ class NotificationServiceTest {
         when(smsProvider.getChannel()).thenReturn(NotificationChannel.SMS);
         
         List<NotificationProvider> providers = List.of(emailProvider, smsProvider);
+        
+        // Mock the new dependencies
+        NotificationPreferenceService mockPreferenceService = mock(NotificationPreferenceService.class);
+        NotificationRetryService mockRetryService = mock(NotificationRetryService.class);
+        
         notificationService = new NotificationService(templateRepository, preferenceRepository, 
-                                                    logRepository, templateEngine, providers);
+                                                    logRepository, templateEngine, mockPreferenceService,
+                                                    mockRetryService, providers);
         
         // Set up tenant context
         TenantContext.setTenantId("test-tenant");

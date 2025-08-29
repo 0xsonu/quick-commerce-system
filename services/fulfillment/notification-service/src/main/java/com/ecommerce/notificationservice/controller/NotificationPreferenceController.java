@@ -75,4 +75,54 @@ public class NotificationPreferenceController {
         return ResponseEntity.ok(ApiResponse.success("Preference deleted successfully", 
                                                     "Preference deleted successfully"));
     }
+
+    /**
+     * Check if notification is enabled for user
+     */
+    @GetMapping("/user/{userId}/check")
+    public ResponseEntity<ApiResponse<Boolean>> isNotificationEnabled(
+            @PathVariable Long userId,
+            @RequestParam NotificationType notificationType,
+            @RequestParam NotificationChannel channel) {
+        
+        boolean enabled = preferenceService.isNotificationEnabled(userId, notificationType, channel);
+        
+        return ResponseEntity.ok(ApiResponse.success(enabled, "Preference check completed"));
+    }
+
+    /**
+     * Opt out user from all notifications
+     */
+    @PostMapping("/user/{userId}/opt-out-all")
+    public ResponseEntity<ApiResponse<String>> optOutAllNotifications(@PathVariable Long userId) {
+        
+        preferenceService.optOutAllNotifications(userId);
+        
+        return ResponseEntity.ok(ApiResponse.success("User opted out successfully", 
+                                                    "User has been opted out of all notifications"));
+    }
+
+    /**
+     * Opt in user to default notifications
+     */
+    @PostMapping("/user/{userId}/opt-in-default")
+    public ResponseEntity<ApiResponse<String>> optInDefaultNotifications(@PathVariable Long userId) {
+        
+        preferenceService.optInDefaultNotifications(userId);
+        
+        return ResponseEntity.ok(ApiResponse.success("User opted in successfully", 
+                                                    "User has been opted in to default notifications"));
+    }
+
+    /**
+     * Get user contact information
+     */
+    @GetMapping("/user/{userId}/contact-info")
+    public ResponseEntity<ApiResponse<NotificationPreferenceService.UserContactInfo>> getUserContactInfo(
+            @PathVariable Long userId) {
+        
+        NotificationPreferenceService.UserContactInfo contactInfo = preferenceService.getUserContactInfo(userId);
+        
+        return ResponseEntity.ok(ApiResponse.success(contactInfo, "Contact information retrieved successfully"));
+    }
 }

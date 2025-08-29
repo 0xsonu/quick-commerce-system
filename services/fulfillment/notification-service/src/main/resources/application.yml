@@ -62,6 +62,13 @@ spring:
     redis:
       time-to-live: 600000 # 10 minutes
 
+# gRPC client configuration
+grpc:
+  client:
+    user-service:
+      host: ${USER_SERVICE_HOST:user-service}
+      port: ${USER_SERVICE_GRPC_PORT:9090}
+
   # Email configuration
   mail:
     host: smtp.gmail.com
@@ -106,6 +113,13 @@ notification:
       per-minute: 20
     user:
       per-hour: 10
+
+  # Retry configuration
+  retry:
+    max-attempts: 3
+    initial-delay: 1000
+    max-delay: 30000
+    multiplier: 2.0
 
 # Management endpoints
 management:

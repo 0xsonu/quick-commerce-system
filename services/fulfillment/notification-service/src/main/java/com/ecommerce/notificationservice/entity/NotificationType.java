@@ -11,5 +11,6 @@ public enum NotificationType {
     INVENTORY_LOW,
     ACCOUNT_CREATED,
     PASSWORD_RESET,
-    PROMOTIONAL
+    PROMOTIONAL,
+    NEWSLETTER
 }
