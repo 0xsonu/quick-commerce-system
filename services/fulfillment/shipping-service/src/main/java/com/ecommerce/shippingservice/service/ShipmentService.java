@@ -3,6 +3,9 @@ package com.ecommerce.shippingservice.service;
 import com.ecommerce.shared.utils.TenantContext;
 import com.ecommerce.shippingservice.carrier.CarrierService;
 import com.ecommerce.shippingservice.carrier.CarrierServiceFactory;
+import com.ecommerce.shippingservice.carrier.ResilientCarrierService;
+import com.ecommerce.shippingservice.carrier.impl.ResilientFedExCarrierService;
+import com.ecommerce.shippingservice.carrier.impl.ResilientUPSCarrierService;
 import com.ecommerce.shippingservice.dto.*;
 import com.ecommerce.shippingservice.entity.Shipment;
 import com.ecommerce.shippingservice.entity.ShipmentItem;
@@ -33,14 +36,17 @@ public class ShipmentService {
     private final ShipmentRepository shipmentRepository;
     private final CarrierServiceFactory carrierServiceFactory;
     private final ShipmentTrackingService trackingService;
+    private final ResilientCarrierService resilientCarrierService;
 
     @Autowired
     public ShipmentService(ShipmentRepository shipmentRepository,
                           CarrierServiceFactory carrierServiceFactory,
-                          ShipmentTrackingService trackingService) {
+                          ShipmentTrackingService trackingService,
+                          ResilientCarrierService resilientCarrierService) {
         this.shipmentRepository = shipmentRepository;
         this.carrierServiceFactory = carrierServiceFactory;
         this.trackingService = trackingService;
+        this.resilientCarrierService = resilientCarrierService;
     }
 
     /**
@@ -86,9 +92,9 @@ public class ShipmentService {
         // Save shipment
         shipment = shipmentRepository.save(shipment);
 
-        // Create shipment with carrier
+        // Create shipment with carrier using resilience patterns
         try {
-            CreateShipmentResponse carrierResponse = carrierService.createShipment(tenantId, request);
+            CreateShipmentResponse carrierResponse = createShipmentWithResilience(carrierService, tenantId, request);
             
             if (carrierResponse.isSuccess()) {
                 shipment.setTrackingNumber(carrierResponse.getTrackingNumber());
@@ -211,7 +217,7 @@ public class ShipmentService {
             .orElseThrow(() -> new CarrierNotAvailableException("Carrier not supported: " + finalCarrierName));
 
         TrackingRequest trackingRequest = new TrackingRequest(trackingNumber, finalCarrierName);
-        return carrierService.trackShipment(tenantId, trackingRequest);
+        return trackShipmentWithResilience(carrierService, tenantId, trackingRequest);
     }
 
     /**
@@ -251,7 +257,7 @@ public class ShipmentService {
 
         boolean cancelled = false;
         if (shipment.getTrackingNumber() != null) {
-            cancelled = carrierService.cancelShipment(tenantId, shipment.getTrackingNumber());
+            cancelled = cancelShipmentWithResilience(carrierService, tenantId, shipment.getTrackingNumber());
         }
 
         if (cancelled || shipment.getTrackingNumber() == null) {
@@ -317,5 +323,50 @@ public class ShipmentService {
         }
 
         return response;
+    }
+
+    /**
+     * Create shipment with resilience patterns
+     */
+    private CreateShipmentResponse createShipmentWithResilience(CarrierService carrierService, String tenantId, CreateShipmentRequest request) {
+        return resilientCarrierService.createShipmentWithResilience(carrierService, tenantId, request);
+    }
+
+    /**
+     * Track shipment with resilience patterns
+     */
+    private TrackingResponse trackShipmentWithResilience(CarrierService carrierService, String tenantId, TrackingRequest request) {
+        return resilientCarrierService.trackShipmentWithResilience(carrierService, tenantId, request);
+    }
+
+    /**
+     * Cancel shipment with resilience patterns
+     */
+    private boolean cancelShipmentWithResilience(CarrierService carrierService, String tenantId, String trackingNumber) {
+        return resilientCarrierService.cancelShipmentWithResilience(carrierService, tenantId, trackingNumber);
+    }
+
+    /**
+     * Get shipping rates with resilience patterns
+     */
+    public List<ShippingRateResponse> getShippingRatesWithResilience(String carrierName, ShippingRateRequest request) {
+        String tenantId = TenantContext.getTenantId();
+        
+        CarrierService carrierService = carrierServiceFactory.getCarrierService(carrierName)
+            .orElseThrow(() -> new CarrierNotAvailableException("Carrier not supported: " + carrierName));
+
+        return resilientCarrierService.getShippingRatesWithResilience(carrierService, tenantId, request);
+    }
+
+    /**
+     * Validate address with resilience patterns
+     */
+    public boolean validateAddressWithResilience(String carrierName, String address) {
+        String tenantId = TenantContext.getTenantId();
+        
+        CarrierService carrierService = carrierServiceFactory.getCarrierService(carrierName)
+            .orElseThrow(() -> new CarrierNotAvailableException("Carrier not supported: " + carrierName));
+
+        return resilientCarrierService.validateAddressWithResilience(carrierService, tenantId, address);
     }
 }

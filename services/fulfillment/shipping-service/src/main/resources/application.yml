@@ -92,3 +92,94 @@ shipping:
   auto-ship-on-creation: true
   tracking-update-batch-size: 50
   tracking-update-enabled: true
+
+# Resilience4j Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      carrier-api:
+        register-health-indicator: true
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        wait-duration-in-open-state: 30s
+        failure-rate-threshold: 50
+        event-consumer-buffer-size: 10
+        record-exceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.web.client.ResourceAccessException
+        ignore-exceptions:
+          - java.lang.IllegalArgumentException
+      fedex-api:
+        register-health-indicator: true
+        sliding-window-size: 8
+        minimum-number-of-calls: 4
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+        wait-duration-in-open-state: 45s
+        failure-rate-threshold: 60
+        event-consumer-buffer-size: 10
+      ups-api:
+        register-health-indicator: true
+        sliding-window-size: 8
+        minimum-number-of-calls: 4
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+        wait-duration-in-open-state: 45s
+        failure-rate-threshold: 60
+        event-consumer-buffer-size: 10
+
+  retry:
+    instances:
+      carrier-api:
+        max-attempts: 3
+        wait-duration: 1s
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.web.client.ResourceAccessException
+        ignore-exceptions:
+          - java.lang.IllegalArgumentException
+      fedex-api:
+        max-attempts: 4
+        wait-duration: 2s
+        exponential-backoff-multiplier: 1.5
+        retry-exceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.web.client.ResourceAccessException
+      ups-api:
+        max-attempts: 4
+        wait-duration: 2s
+        exponential-backoff-multiplier: 1.5
+        retry-exceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.web.client.ResourceAccessException
+
+  bulkhead:
+    instances:
+      carrier-api:
+        max-concurrent-calls: 10
+        max-wait-duration: 5s
+      fedex-api:
+        max-concurrent-calls: 5
+        max-wait-duration: 3s
+      ups-api:
+        max-concurrent-calls: 5
+        max-wait-duration: 3s
+
+  timelimiter:
+    instances:
+      carrier-api:
+        timeout-duration: 30s
+        cancel-running-future: true
+      fedex-api:
+        timeout-duration: 25s
+        cancel-running-future: true
+      ups-api:
+        timeout-duration: 25s
+        cancel-running-future: true
