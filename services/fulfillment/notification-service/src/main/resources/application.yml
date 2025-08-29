@@ -44,6 +44,24 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
+  # Redis configuration for caching
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+
+  # Cache configuration
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000 # 10 minutes
+
   # Email configuration
   mail:
     host: smtp.gmail.com
@@ -73,6 +91,21 @@ notification:
       account-sid: ${TWILIO_ACCOUNT_SID:}
       auth-token: ${TWILIO_AUTH_TOKEN:}
       from-number: ${TWILIO_FROM_NUMBER:}
+
+  # Batching configuration
+  batch:
+    size: 50
+    timeout:
+      seconds: 30
+
+  # Throttling configuration
+  throttle:
+    email:
+      per-minute: 100
+    sms:
+      per-minute: 20
+    user:
+      per-hour: 10
 
 # Management endpoints
 management:
