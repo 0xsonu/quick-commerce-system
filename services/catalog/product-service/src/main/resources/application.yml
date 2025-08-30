@@ -70,8 +70,23 @@ app:
     topics:
       product-events: product-events
 
+# Tracing Configuration
+tracing:
+  enabled: true
+  jaeger:
+    endpoint: http://localhost:14250
+  otlp:
+    endpoint: http://localhost:4317
+  sampling:
+    ratio: 0.1 # Sample 10% of traces
+  export:
+    timeout: 30s
+    batch:
+      size: 512
+      delay: 2s
+
 logging:
   level:
     com.ecommerce: INFO
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{correlationId}] [%X{tenantId}] [%X{userId}] %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{correlationId}] [%X{tenantId}] [%X{userId}] [%X{traceId}] [%X{spanId}] %logger{36} - %msg%n"

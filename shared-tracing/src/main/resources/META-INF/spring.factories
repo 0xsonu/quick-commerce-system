@@ -1,0 +1,7 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+com.ecommerce.shared.tracing.config.TracingConfiguration,\
+com.ecommerce.shared.tracing.config.WebTracingConfiguration,\
+com.ecommerce.shared.tracing.aspect.TracingAspect,\
+com.ecommerce.shared.tracing.interceptor.HttpTracingInterceptor,\
+com.ecommerce.shared.tracing.interceptor.GrpcTracingInterceptor,\
+com.ecommerce.shared.tracing.util.TracingUtils

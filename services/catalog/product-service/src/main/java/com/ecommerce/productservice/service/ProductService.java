@@ -3,6 +3,7 @@ package com.ecommerce.productservice.service;
 import com.ecommerce.productservice.dto.*;
 import com.ecommerce.productservice.entity.Product;
 import com.ecommerce.productservice.repository.ProductRepository;
+import com.ecommerce.shared.tracing.annotation.Traced;
 import com.ecommerce.shared.utils.exception.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
@@ -22,6 +23,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
+@Traced(operation = "product-service")
 public class ProductService {
 
     private final ProductRepository productRepository;
@@ -37,6 +39,7 @@ public class ProductService {
     }
 
     @Cacheable(value = "products", key = "#tenantId + ':' + #productId")
+    @Traced(value = "get-product", operation = "database-read", includeParameters = true)
     public ProductResponse getProduct(String tenantId, String productId) {
         Product product = productRepository.findByTenantIdAndId(tenantId, productId)
             .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + productId));

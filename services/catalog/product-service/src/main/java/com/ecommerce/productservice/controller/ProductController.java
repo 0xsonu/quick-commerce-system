@@ -3,6 +3,7 @@ package com.ecommerce.productservice.controller;
 import com.ecommerce.productservice.dto.*;
 import com.ecommerce.productservice.entity.Product;
 import com.ecommerce.productservice.service.ProductService;
+import com.ecommerce.shared.tracing.annotation.Traced;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -17,6 +18,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/products")
 @Validated
+@Traced(operation = "product-controller")
 public class ProductController {
 
     private final ProductService productService;
@@ -46,6 +48,7 @@ public class ProductController {
     }
 
     @GetMapping("/{productId}")
+    @Traced(value = "get-product-by-id", includeParameters = true)
     public ResponseEntity<ProductResponse> getProduct(
             @RequestHeader("X-Tenant-ID") String tenantId,
             @PathVariable String productId) {
@@ -64,6 +67,7 @@ public class ProductController {
     }
 
     @PostMapping
+    @Traced(value = "create-product", operation = "product-creation", includeParameters = true)
     public ResponseEntity<ProductResponse> createProduct(
             @RequestHeader("X-Tenant-ID") String tenantId,
             @Valid @RequestBody CreateProductRequest request) {

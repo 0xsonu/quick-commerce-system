@@ -59,6 +59,7 @@
         <module>shared-proto</module>
         <module>shared-metrics</module>
         <module>shared-logging</module>
+        <module>shared-tracing</module>
         
         <!-- Core Services -->
         <module>services/core/api-gateway</module>
@@ -142,10 +143,66 @@
                 <version>${micrometer.version}</version>
             </dependency>
             
+            <!-- OpenTelemetry -->
             <dependency>
                 <groupId>io.opentelemetry</groupId>
                 <artifactId>opentelemetry-api</artifactId>
                 <version>${opentelemetry.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-sdk</artifactId>
+                <version>${opentelemetry.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-exporter-jaeger</artifactId>
+                <version>${opentelemetry.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-exporter-otlp</artifactId>
+                <version>${opentelemetry.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>io.opentelemetry.semconv</groupId>
+                <artifactId>opentelemetry-semconv</artifactId>
+                <version>1.21.0-alpha</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>io.opentelemetry.instrumentation</groupId>
+                <artifactId>opentelemetry-spring-boot-starter</artifactId>
+                <version>1.32.0-alpha</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>io.opentelemetry.instrumentation</groupId>
+                <artifactId>opentelemetry-jdbc</artifactId>
+                <version>1.32.0-alpha</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>io.opentelemetry.instrumentation</groupId>
+                <artifactId>opentelemetry-kafka-clients-2.6</artifactId>
+                <version>1.32.0-alpha</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>io.opentelemetry.instrumentation</groupId>
+                <artifactId>opentelemetry-grpc-1.6</artifactId>
+                <version>1.32.0-alpha</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-sdk-testing</artifactId>
+                <version>${opentelemetry.version}</version>
+                <scope>test</scope>
             </dependency>
 
             <!-- gRPC -->
@@ -170,6 +227,12 @@
             <dependency>
                 <groupId>io.grpc</groupId>
                 <artifactId>grpc-netty-shaded</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-api</artifactId>
                 <version>${grpc.version}</version>
             </dependency>
 
@@ -230,6 +293,12 @@
             <dependency>
                 <groupId>com.ecommerce</groupId>
                 <artifactId>shared-logging</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>com.ecommerce</groupId>
+                <artifactId>shared-tracing</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>
