@@ -115,5 +115,97 @@ INSERT INTO notification_templates (tenant_id, template_key, channel, subject, c
 ('default', 'password_reset', 'EMAIL', 'Password Reset Request', 
  'Dear [[${customerName}]],\n\nWe received a request to reset your password.\n\nClick the link below to reset your password:\n[[${resetLink}]]\n\nThis link will expire in 24 hours.\n\nIf you didn''t request this, please ignore this email.', true);
 
--- Insert default notification preferences (all enabled by default)
--- These will be created dynamically when users register, but we can set system defaults
+-- Tenant branding configurations table
+CREATE TABLE tenant_branding_configs (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    tenant_id VARCHAR(50) NOT NULL UNIQUE,
+    brand_name VARCHAR(255),
+    logo_url VARCHAR(500),
+    primary_color VARCHAR(7),
+    secondary_color VARCHAR(7),
+    font_family VARCHAR(100),
+    website_url VARCHAR(500),
+    support_email VARCHAR(255),
+    support_phone VARCHAR(20),
+    company_address TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_tenant_id (tenant_id),
+    INDEX idx_is_active (is_active)
+);
+
+-- Tenant branding custom fields table
+CREATE TABLE tenant_branding_custom_fields (
+    branding_config_id BIGINT NOT NULL,
+    field_name VARCHAR(100) NOT NULL,
+    field_value VARCHAR(500),
+    PRIMARY KEY (branding_config_id, field_name),
+    FOREIGN KEY (branding_config_id) REFERENCES tenant_branding_configs(id) ON DELETE CASCADE
+);
+
+-- Notification template versions table
+CREATE TABLE notification_template_versions (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    tenant_id VARCHAR(50) NOT NULL,
+    template_key VARCHAR(100) NOT NULL,
+    channel ENUM('EMAIL', 'SMS', 'PUSH') NOT NULL,
+    version_number INT NOT NULL,
+    subject VARCHAR(255),
+    content TEXT NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT FALSE,
+    is_published BOOLEAN NOT NULL DEFAULT FALSE,
+    change_description TEXT,
+    created_by VARCHAR(100),
+    published_at TIMESTAMP NULL,
+    published_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_tenant_template_channel_version (tenant_id, template_key, channel, version_number),
+    INDEX idx_tenant_template_version (tenant_id, template_key, version_number),
+    INDEX idx_tenant_template_active (tenant_id, template_key, is_active),
+    INDEX idx_created_at (created_at)
+);
+
+-- Template version variables table
+CREATE TABLE template_version_variables (
+    template_version_id BIGINT NOT NULL,
+    variable_name VARCHAR(100) NOT NULL,
+    variable_description VARCHAR(255),
+    PRIMARY KEY (template_version_id, variable_name),
+    FOREIGN KEY (template_version_id) REFERENCES notification_template_versions(id) ON DELETE CASCADE
+);
+
+-- Notification A/B tests table
+CREATE TABLE notification_ab_tests (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    tenant_id VARCHAR(50) NOT NULL,
+    test_name VARCHAR(100) NOT NULL,
+    template_key VARCHAR(100) NOT NULL,
+    channel ENUM('EMAIL', 'SMS', 'PUSH') NOT NULL,
+    control_version_id BIGINT NOT NULL,
+    variant_version_id BIGINT NOT NULL,
+    traffic_split_percentage INT NOT NULL,
+    start_date TIMESTAMP NOT NULL,
+    end_date TIMESTAMP NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    description TEXT,
+    success_metric VARCHAR(50),
+    created_by VARCHAR(100),
+    stopped_by VARCHAR(100),
+    stopped_at TIMESTAMP NULL,
+    stop_reason VARCHAR(255),
+    control_sent_count BIGINT NOT NULL DEFAULT 0,
+    variant_sent_count BIGINT NOT NULL DEFAULT 0,
+    control_success_count BIGINT NOT NULL DEFAULT 0,
+    variant_success_count BIGINT NOT NULL DEFAULT 0,
+    last_stats_update TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_tenant_template_test (tenant_id, template_key, test_name),
+    INDEX idx_tenant_template_test (tenant_id, template_key, test_name),
+    INDEX idx_tenant_active_tests (tenant_id, is_active),
+    INDEX idx_test_period (start_date, end_date),
+    FOREIGN KEY (control_version_id) REFERENCES notification_template_versions(id),
+    FOREIGN KEY (variant_version_id) REFERENCES notification_template_versions(id)
+);

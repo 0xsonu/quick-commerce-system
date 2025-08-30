@@ -2,25 +2,33 @@ package com.ecommerce.notificationservice.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class NotificationTemplateEngineTest {
+
+    @Mock
+    private TenantBrandingService tenantBrandingService;
 
     private NotificationTemplateEngine templateEngine;
 
     @BeforeEach
     void setUp() {
-        templateEngine = new NotificationTemplateEngine();
+        templateEngine = new NotificationTemplateEngine(tenantBrandingService);
     }
 
     @Test
     void processTemplate_WithVariables_ShouldSubstituteCorrectly() {
         // Arrange
-        String template = "Hello [(${name})], your order [(${orderNumber})] is ready!";
+        String template = "Hello [[${name}]], your order [[${orderNumber}]] is ready!";
         Map<String, Object> variables = new HashMap<>();
         variables.put("name", "John Doe");
         variables.put("orderNumber", "12345");
@@ -73,7 +81,7 @@ class NotificationTemplateEngineTest {
     @Test
     void processSubject_ShouldProcessCorrectly() {
         // Arrange
-        String subjectTemplate = "Order [(${orderNumber})] - [(${status})]";
+        String subjectTemplate = "Order [[${orderNumber}]] - [[${status}]]";
         Map<String, Object> variables = new HashMap<>();
         variables.put("orderNumber", "12345");
         variables.put("status", "Confirmed");
@@ -88,9 +96,9 @@ class NotificationTemplateEngineTest {
     @Test
     void processContent_WithComplexTemplate_ShouldProcessCorrectly() {
         // Arrange
-        String contentTemplate = "Dear [(${customerName})],\n\n" +
-                                "Your order [(${orderNumber})] has been [(${status})].\n" +
-                                "Total amount: $[(${totalAmount})].\n\n" +
+        String contentTemplate = "Dear [[${customerName}]],\n\n" +
+                                "Your order [[${orderNumber}]] has been [[${status}]].\n" +
+                                "Total amount: $[[${totalAmount}]].\n\n" +
                                 "Thank you for your business!";
         
         Map<String, Object> variables = new HashMap<>();
@@ -113,7 +121,7 @@ class NotificationTemplateEngineTest {
     @Test
     void processTemplate_WithMissingVariable_ShouldLeaveUnprocessed() {
         // Arrange
-        String template = "Hello [(${name})], your order [(${orderNumber})] is ready!";
+        String template = "Hello [[${name}]], your order [[${orderNumber}]] is ready!";
         Map<String, Object> variables = new HashMap<>();
         variables.put("name", "John Doe");
         // orderNumber is missing
@@ -124,6 +132,27 @@ class NotificationTemplateEngineTest {
         // Assert
         // Thymeleaf should leave unresolved variables as empty or handle gracefully
         assertTrue(result.contains("John Doe"));
-        assertFalse(result.contains("[(${name})]")); // Variable should be resolved
+        assertFalse(result.contains("[[${name}]]")); // Variable should be resolved
+    }
+
+    @Test
+    void processTemplate_WithTenantBranding_ShouldIncludeBrandingVariables() {
+        // Arrange
+        String tenantId = "test-tenant";
+        String template = "Welcome to [[${brandName}]]! Contact us at [[${supportEmail}]].";
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("customerName", "John Doe");
+
+        Map<String, Object> brandingVariables = new HashMap<>();
+        brandingVariables.put("brandName", "Test Store");
+        brandingVariables.put("supportEmail", "support@teststore.com");
+
+        when(tenantBrandingService.getBrandingVariables(tenantId)).thenReturn(brandingVariables);
+
+        // Act
+        String result = templateEngine.processTemplate(template, variables, tenantId);
+
+        // Assert
+        assertEquals("Welcome to Test Store! Contact us at support@teststore.com.", result);
     }
 }
