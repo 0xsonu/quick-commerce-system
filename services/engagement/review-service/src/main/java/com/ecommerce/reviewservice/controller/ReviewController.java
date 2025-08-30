@@ -3,6 +3,7 @@ package com.ecommerce.reviewservice.controller;
 import com.ecommerce.reviewservice.dto.*;
 import com.ecommerce.reviewservice.entity.ReviewStatus;
 import com.ecommerce.reviewservice.service.ReviewService;
+import com.ecommerce.reviewservice.service.ReviewAggregationService;
 import com.ecommerce.shared.utils.response.ApiResponse;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -19,10 +20,12 @@ public class ReviewController {
     private static final Logger logger = LoggerFactory.getLogger(ReviewController.class);
 
     private final ReviewService reviewService;
+    private final ReviewAggregationService reviewAggregationService;
 
     @Autowired
-    public ReviewController(ReviewService reviewService) {
+    public ReviewController(ReviewService reviewService, ReviewAggregationService reviewAggregationService) {
         this.reviewService = reviewService;
+        this.reviewAggregationService = reviewAggregationService;
     }
 
     @PostMapping
@@ -151,5 +154,57 @@ public class ReviewController {
         boolean hasReviewed = reviewService.hasUserReviewedProduct(userId, productId);
         
         return ResponseEntity.ok(ApiResponse.success(hasReviewed, "Review existence check completed"));
+    }
+
+    // Review Aggregation and Rating Calculation Endpoints
+
+    @GetMapping("/product/{productId}/aggregate")
+    public ResponseEntity<ApiResponse<ProductRatingAggregateResponse>> getProductRatingAggregate(
+            @PathVariable String productId) {
+        
+        logger.info("Getting rating aggregate for product {}", productId);
+        
+        ProductRatingAggregateResponse response = reviewAggregationService.getProductRatingAggregate(productId);
+        
+        return ResponseEntity.ok(ApiResponse.success(response, "Product rating aggregate retrieved successfully"));
+    }
+
+    @GetMapping("/product/{productId}/summary")
+    public ResponseEntity<ApiResponse<ReviewSummaryResponse>> getReviewSummary(
+            @PathVariable String productId) {
+        
+        logger.info("Getting review summary for product {}", productId);
+        
+        ReviewSummaryResponse response = reviewAggregationService.getReviewSummary(productId);
+        
+        return ResponseEntity.ok(ApiResponse.success(response, "Review summary retrieved successfully"));
+    }
+
+    @PostMapping("/product/{productId}/filtered")
+    public ResponseEntity<ApiResponse<PagedResponse<ReviewResponse>>> getFilteredReviews(
+            @PathVariable String productId,
+            @Valid @RequestBody ReviewFilterRequest filterRequest,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        
+        logger.info("Getting filtered reviews for product {} with filters", productId);
+        
+        PagedResponse<ReviewResponse> response = reviewAggregationService.getFilteredReviews(
+            productId, filterRequest, page, size);
+        
+        return ResponseEntity.ok(ApiResponse.success(response, "Filtered reviews retrieved successfully"));
+    }
+
+    @PostMapping("/{reviewId}/vote")
+    public ResponseEntity<ApiResponse<ReviewResponse>> voteOnReview(
+            @PathVariable String reviewId,
+            @Valid @RequestBody VoteReviewRequest voteRequest,
+            @RequestHeader("X-User-ID") Long userId) {
+        
+        logger.info("User {} voting on review {}: helpful={}", userId, reviewId, voteRequest.getHelpful());
+        
+        ReviewResponse response = reviewAggregationService.voteOnReview(reviewId, voteRequest, userId);
+        
+        return ResponseEntity.ok(ApiResponse.success(response, "Vote recorded successfully"));
     }
 }

@@ -171,4 +171,63 @@ db.reviews.insertOne({
 });
 
 print("Sample review inserted");
+
+// Create review_votes collection with validation schema
+db.createCollection("review_votes", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["tenantId", "userId", "reviewId", "helpful"],
+      properties: {
+        tenantId: {
+          bsonType: "string",
+          description: "Tenant ID is required",
+        },
+        userId: {
+          bsonType: "long",
+          description: "User ID is required",
+        },
+        reviewId: {
+          bsonType: "string",
+          description: "Review ID is required",
+        },
+        helpful: {
+          bsonType: "bool",
+          description: "Helpful flag is required",
+        },
+      },
+    },
+  },
+});
+
+print("Review votes collection created with validation schema");
+
+// Create indexes for the review_votes collection
+db.review_votes.createIndex(
+  { tenantId: 1, userId: 1, reviewId: 1 },
+  {
+    unique: true,
+    name: "unique_user_review_vote",
+    background: true,
+  }
+);
+
+db.review_votes.createIndex(
+  { tenantId: 1, reviewId: 1 },
+  {
+    name: "review_tenant_idx",
+    background: true,
+  }
+);
+
+db.review_votes.createIndex(
+  { createdAt: 1 },
+  {
+    name: "vote_created_at_idx",
+    background: true,
+  }
+);
+
+print("All indexes created for review_votes collection");
+
 print("Reviews database initialization completed");
