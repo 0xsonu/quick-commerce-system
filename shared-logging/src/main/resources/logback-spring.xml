@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    
+    <!-- Define properties -->
+    <springProperty scope="context" name="serviceName" source="spring.application.name" defaultValue="unknown-service"/>
+    <springProperty scope="context" name="logLevel" source="logging.level.root" defaultValue="INFO"/>
+    <springProperty scope="context" name="environment" source="spring.profiles.active" defaultValue="local"/>
+    
+    <!-- Console appender for development -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp>
+                    <timeZone>UTC</timeZone>
+                    <pattern>yyyy-MM-dd'T'HH:mm:ss.SSSZ</pattern>
+                </timestamp>
+                <version/>
+                <logLevel>
+                    <fieldName>level</fieldName>
+                </logLevel>
+                <message>
+                    <fieldName>message</fieldName>
+                </message>
+                <mdc>
+                    <fieldName>context</fieldName>
+                    <includeMdcKeyName>correlationId</includeMdcKeyName>
+                    <includeMdcKeyName>tenantId</includeMdcKeyName>
+                    <includeMdcKeyName>userId</includeMdcKeyName>
+                    <includeMdcKeyName>requestUri</includeMdcKeyName>
+                    <includeMdcKeyName>requestMethod</includeMdcKeyName>
+                    <includeMdcKeyName>requestStartTime</includeMdcKeyName>
+                    <includeMdcKeyName>serviceName</includeMdcKeyName>
+                </mdc>
+                <arguments>
+                    <fieldName>arguments</fieldName>
+                </arguments>
+                <stackTrace>
+                    <fieldName>stackTrace</fieldName>
+                </stackTrace>
+                <loggerName>
+                    <fieldName>logger</fieldName>
+                </loggerName>
+                <pattern>
+                    <pattern>
+                        {
+                            "service": "${serviceName}",
+                            "environment": "${environment}",
+                            "hostname": "${HOSTNAME:-localhost}",
+                            "version": "${APPLICATION_VERSION:-1.0.0}",
+                            "thread": "%thread"
+                        }
+                    </pattern>
+                </pattern>
+            </providers>
+        </encoder>
+    </appender>
+    
+    <!-- File appender for production -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/${serviceName}.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/${serviceName}.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>100MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>10GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp>
+                    <timeZone>UTC</timeZone>
+                    <pattern>yyyy-MM-dd'T'HH:mm:ss.SSSZ</pattern>
+                </timestamp>
+                <version/>
+                <logLevel>
+                    <fieldName>level</fieldName>
+                </logLevel>
+                <message>
+                    <fieldName>message</fieldName>
+                </message>
+                <mdc>
+                    <fieldName>context</fieldName>
+                    <includeMdcKeyName>correlationId</includeMdcKeyName>
+                    <includeMdcKeyName>tenantId</includeMdcKeyName>
+                    <includeMdcKeyName>userId</includeMdcKeyName>
+                    <includeMdcKeyName>requestUri</includeMdcKeyName>
+                    <includeMdcKeyName>requestMethod</includeMdcKeyName>
+                    <includeMdcKeyName>requestStartTime</includeMdcKeyName>
+                    <includeMdcKeyName>serviceName</includeMdcKeyName>
+                </mdc>
+                <arguments>
+                    <fieldName>arguments</fieldName>
+                </arguments>
+                <stackTrace>
+                    <fieldName>stackTrace</fieldName>
+                </stackTrace>
+                <loggerName>
+                    <fieldName>logger</fieldName>
+                </loggerName>
+                <pattern>
+                    <pattern>
+                        {
+                            "service": "${serviceName}",
+                            "environment": "${environment}",
+                            "hostname": "${HOSTNAME:-localhost}",
+                            "version": "${APPLICATION_VERSION:-1.0.0}",
+                            "thread": "%thread",
+                            "processId": "${PID:-unknown}"
+                        }
+                    </pattern>
+                </pattern>
+            </providers>
+        </encoder>
+    </appender>
+    
+    <!-- Async appender for better performance -->
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="FILE"/>
+        <queueSize>1024</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <includeCallerData>true</includeCallerData>
+    </appender>
+    
+    <!-- Environment-specific configurations -->
+    <springProfile name="local,dev">
+        <root level="${logLevel}">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+        
+        <!-- Enable debug logging for our packages in development -->
+        <logger name="com.ecommerce" level="DEBUG"/>
+    </springProfile>
+    
+    <springProfile name="test">
+        <root level="WARN">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+        
+        <!-- Reduce noise in tests -->
+        <logger name="com.ecommerce" level="INFO"/>
+        <logger name="org.springframework" level="WARN"/>
+        <logger name="org.hibernate" level="WARN"/>
+    </springProfile>
+    
+    <springProfile name="staging,prod">
+        <root level="${logLevel}">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE"/>
+        </root>
+        
+        <!-- Production logging levels -->
+        <logger name="com.ecommerce" level="INFO"/>
+        <logger name="org.springframework" level="WARN"/>
+        <logger name="org.hibernate" level="WARN"/>
+        <logger name="org.apache.kafka" level="WARN"/>
+        <logger name="org.mongodb" level="WARN"/>
+    </springProfile>
+    
+    <!-- Specific loggers -->
+    <logger name="com.ecommerce.shared.logging.filter.LoggingFilter" level="INFO"/>
+    <logger name="com.ecommerce.shared.logging.aspect.LoggingAspect" level="DEBUG"/>
+    
+    <!-- Security-related logging -->
+    <logger name="org.springframework.security" level="INFO"/>
+    <logger name="com.ecommerce.shared.security" level="INFO"/>
+    
+    <!-- Database logging -->
+    <logger name="org.hibernate.SQL" level="DEBUG" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+    <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="TRACE" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+</configuration>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Include the shared logging configuration -->
+    <include resource="logback-spring.xml"/>
+    
+    <!-- Service-specific logging configuration -->
+    <springProperty scope="context" name="serviceName" source="spring.application.name" defaultValue="order-service"/>
+    
+    <!-- Service-specific loggers -->
+    <logger name="com.ecommerce.orderservice.saga" level="DEBUG"/>
+    <logger name="com.ecommerce.orderservice.service.OrderService" level="INFO"/>
+    <logger name="com.ecommerce.orderservice.controller" level="INFO"/>
+    
+    <!-- External service call logging -->
+    <logger name="com.ecommerce.orderservice.client" level="DEBUG"/>
+    
+    <!-- Database transaction logging -->
+    <logger name="org.springframework.transaction" level="DEBUG"/>
+    
+    <!-- Kafka logging -->
+    <logger name="org.apache.kafka" level="WARN"/>
+    <logger name="org.springframework.kafka" level="INFO"/>
+</configuration>

@@ -9,6 +9,8 @@ import com.ecommerce.orderservice.exception.OrderValidationException;
 import com.ecommerce.orderservice.repository.OrderRepository;
 import com.ecommerce.orderservice.saga.OrderSagaOrchestrator;
 import com.ecommerce.orderservice.saga.OrderSagaState;
+import com.ecommerce.shared.logging.annotation.Loggable;
+import com.ecommerce.shared.logging.annotation.LogParameters;
 import com.ecommerce.shared.metrics.annotations.BusinessMetric;
 import com.ecommerce.shared.metrics.annotations.Timed;
 import com.ecommerce.shared.metrics.collectors.BusinessMetricsCollector;
@@ -62,12 +64,16 @@ public class OrderService {
     }
 
     @Transactional
+    @Loggable
+    @LogParameters
     @BusinessMetric(value = "order_created", tags = {"operation", "create"})
     @Timed(value = "order.creation.time", description = "Time taken to create an order")
     public OrderResponse createOrder(CreateOrderRequest request) {
         return createOrderInternal(request, null);
     }
 
+    @Loggable
+    @LogParameters
     @Transactional
     public OrderResponse createOrderWithIdempotency(CreateOrderRequest request, String idempotencyToken) {
         logger.info("Creating order with idempotency token for user: {} in tenant: {}", 
