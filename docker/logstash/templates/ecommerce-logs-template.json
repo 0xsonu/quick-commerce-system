@@ -1,0 +1,114 @@
+{
+  "index_patterns": ["ecommerce-logs-*"],
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "index.lifecycle.name": "ecommerce-logs-policy",
+    "index.lifecycle.rollover_alias": "ecommerce-logs",
+    "index.refresh_interval": "5s",
+    "index.codec": "best_compression"
+  },
+  "mappings": {
+    "properties": {
+      "@timestamp": {
+        "type": "date"
+      },
+      "message": {
+        "type": "text",
+        "analyzer": "standard"
+      },
+      "log_level": {
+        "type": "keyword"
+      },
+      "logger_name": {
+        "type": "keyword"
+      },
+      "thread_name": {
+        "type": "keyword"
+      },
+      "service_name": {
+        "type": "keyword"
+      },
+      "correlation_id": {
+        "type": "keyword"
+      },
+      "tenant_id": {
+        "type": "keyword"
+      },
+      "user_id": {
+        "type": "keyword"
+      },
+      "environment": {
+        "type": "keyword"
+      },
+      "cluster": {
+        "type": "keyword"
+      },
+      "http_method": {
+        "type": "keyword"
+      },
+      "http_path": {
+        "type": "keyword"
+      },
+      "http_status": {
+        "type": "integer"
+      },
+      "http_duration": {
+        "type": "long"
+      },
+      "http_user_agent": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "exception_class": {
+        "type": "keyword"
+      },
+      "exception_message": {
+        "type": "text"
+      },
+      "stack_trace": {
+        "type": "text"
+      },
+      "db_query_time": {
+        "type": "long"
+      },
+      "db_connection_pool": {
+        "type": "keyword"
+      },
+      "metric_name": {
+        "type": "keyword"
+      },
+      "metric_value": {
+        "type": "double"
+      },
+      "metric_type": {
+        "type": "keyword"
+      },
+      "container": {
+        "properties": {
+          "name": {
+            "type": "keyword"
+          },
+          "id": {
+            "type": "keyword"
+          },
+          "image": {
+            "properties": {
+              "name": {
+                "type": "keyword"
+              }
+            }
+          }
+        }
+      },
+      "tags": {
+        "type": "keyword"
+      }
+    }
+  }
+}

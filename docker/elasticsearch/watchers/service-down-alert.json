@@ -1,0 +1,62 @@
+{
+  "trigger": {
+    "schedule": {
+      "interval": "2m"
+    }
+  },
+  "input": {
+    "search": {
+      "request": {
+        "search_type": "query_then_fetch",
+        "indices": ["ecommerce-logs-*"],
+        "body": {
+          "query": {
+            "range": {
+              "@timestamp": {
+                "gte": "now-5m"
+              }
+            }
+          },
+          "aggs": {
+            "services": {
+              "terms": {
+                "field": "service_name",
+                "size": 20
+              },
+              "aggs": {
+                "latest_log": {
+                  "max": {
+                    "field": "@timestamp"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "condition": {
+    "script": {
+      "source": "def now = System.currentTimeMillis(); def threshold = now - 300000; def downServices = []; for (service in ctx.payload.aggregations.services.buckets) { if (service.latest_log.value < threshold) { downServices.add(service.key); } } ctx.vars.down_services = downServices; return downServices.size() > 0;"
+    }
+  },
+  "actions": {
+    "send_email": {
+      "email": {
+        "profile": "standard",
+        "to": ["devops@ecommerce.com"],
+        "subject": "Service Down Alert - Ecommerce Platform",
+        "body": {
+          "text": "The following services appear to be down (no logs in last 5 minutes):\n\n{{#ctx.vars.down_services}}\n- {{.}}\n{{/ctx.vars.down_services}}\n\nPlease check service health immediately."
+        }
+      }
+    },
+    "log_alert": {
+      "logging": {
+        "level": "error",
+        "text": "Service down alert triggered for services: {{ctx.vars.down_services}}"
+      }
+    }
+  }
+}

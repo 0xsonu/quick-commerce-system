@@ -1,0 +1,73 @@
+{
+  "trigger": {
+    "schedule": {
+      "interval": "1m"
+    }
+  },
+  "input": {
+    "search": {
+      "request": {
+        "search_type": "query_then_fetch",
+        "indices": ["ecommerce-logs-*"],
+        "body": {
+          "query": {
+            "bool": {
+              "must": [
+                {
+                  "term": {
+                    "log_level": "ERROR"
+                  }
+                },
+                {
+                  "range": {
+                    "@timestamp": {
+                      "gte": "now-5m"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "error_count": {
+              "cardinality": {
+                "field": "correlation_id"
+              }
+            },
+            "by_service": {
+              "terms": {
+                "field": "service_name",
+                "size": 10
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "condition": {
+    "compare": {
+      "ctx.payload.aggregations.error_count.value": {
+        "gt": 10
+      }
+    }
+  },
+  "actions": {
+    "send_email": {
+      "email": {
+        "profile": "standard",
+        "to": ["devops@ecommerce.com"],
+        "subject": "High Error Rate Alert - Ecommerce Platform",
+        "body": {
+          "text": "High error rate detected in the last 5 minutes.\n\nError count: {{ctx.payload.aggregations.error_count.value}}\n\nTop services with errors:\n{{#ctx.payload.aggregations.by_service.buckets}}\n- {{key}}: {{doc_count}} errors\n{{/ctx.payload.aggregations.by_service.buckets}}\n\nPlease investigate immediately."
+        }
+      }
+    },
+    "log_alert": {
+      "logging": {
+        "level": "warn",
+        "text": "High error rate alert triggered: {{ctx.payload.aggregations.error_count.value}} errors in last 5 minutes"
+      }
+    }
+  }
+}

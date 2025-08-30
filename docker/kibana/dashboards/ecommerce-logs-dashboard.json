@@ -1,0 +1,130 @@
+{
+  "version": "8.11.0",
+  "objects": [
+    {
+      "id": "ecommerce-logs-overview",
+      "type": "dashboard",
+      "attributes": {
+        "title": "Ecommerce Logs Overview",
+        "description": "Overview dashboard for ecommerce microservices logs",
+        "panelsJSON": "[{\"version\":\"8.11.0\",\"gridData\":{\"x\":0,\"y\":0,\"w\":24,\"h\":15,\"i\":\"1\"},\"panelIndex\":\"1\",\"embeddableConfig\":{},\"panelRefName\":\"panel_1\"},{\"version\":\"8.11.0\",\"gridData\":{\"x\":24,\"y\":0,\"w\":24,\"h\":15,\"i\":\"2\"},\"panelIndex\":\"2\",\"embeddableConfig\":{},\"panelRefName\":\"panel_2\"},{\"version\":\"8.11.0\",\"gridData\":{\"x\":0,\"y\":15,\"w\":48,\"h\":15,\"i\":\"3\"},\"panelIndex\":\"3\",\"embeddableConfig\":{},\"panelRefName\":\"panel_3\"},{\"version\":\"8.11.0\",\"gridData\":{\"x\":0,\"y\":30,\"w\":24,\"h\":15,\"i\":\"4\"},\"panelIndex\":\"4\",\"embeddableConfig\":{},\"panelRefName\":\"panel_4\"},{\"version\":\"8.11.0\",\"gridData\":{\"x\":24,\"y\":30,\"w\":24,\"h\":15,\"i\":\"5\"},\"panelIndex\":\"5\",\"embeddableConfig\":{},\"panelRefName\":\"panel_5\"}]",
+        "timeRestore": false,
+        "timeTo": "now",
+        "timeFrom": "now-24h",
+        "refreshInterval": {
+          "pause": false,
+          "value": 30000
+        },
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"query\":{\"match_all\":{}},\"filter\":[]}"
+        }
+      },
+      "references": [
+        {
+          "name": "panel_1",
+          "type": "visualization",
+          "id": "log-levels-pie-chart"
+        },
+        {
+          "name": "panel_2",
+          "type": "visualization",
+          "id": "services-bar-chart"
+        },
+        {
+          "name": "panel_3",
+          "type": "visualization",
+          "id": "logs-timeline"
+        },
+        {
+          "name": "panel_4",
+          "type": "visualization",
+          "id": "error-logs-table"
+        },
+        {
+          "name": "panel_5",
+          "type": "visualization",
+          "id": "response-times-histogram"
+        }
+      ]
+    },
+    {
+      "id": "log-levels-pie-chart",
+      "type": "visualization",
+      "attributes": {
+        "title": "Log Levels Distribution",
+        "visState": "{\"title\":\"Log Levels Distribution\",\"type\":\"pie\",\"aggs\":[{\"id\":\"1\",\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"log_level\",\"size\":10,\"order\":\"desc\",\"orderBy\":\"1\"}}]}",
+        "uiStateJSON": "{}",
+        "description": "",
+        "version": 1,
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"ecommerce-logs-*\",\"query\":{\"match_all\":{}},\"filter\":[]}"
+        }
+      }
+    },
+    {
+      "id": "services-bar-chart",
+      "type": "visualization",
+      "attributes": {
+        "title": "Logs by Service",
+        "visState": "{\"title\":\"Logs by Service\",\"type\":\"histogram\",\"aggs\":[{\"id\":\"1\",\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"service_name\",\"size\":20,\"order\":\"desc\",\"orderBy\":\"1\"}}]}",
+        "uiStateJSON": "{}",
+        "description": "",
+        "version": 1,
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"ecommerce-logs-*\",\"query\":{\"match_all\":{}},\"filter\":[]}"
+        }
+      }
+    },
+    {
+      "id": "logs-timeline",
+      "type": "visualization",
+      "attributes": {
+        "title": "Logs Timeline",
+        "visState": "{\"title\":\"Logs Timeline\",\"type\":\"line\",\"aggs\":[{\"id\":\"1\",\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"@timestamp\",\"interval\":\"auto\",\"min_doc_count\":1}},{\"id\":\"3\",\"type\":\"terms\",\"schema\":\"group\",\"params\":{\"field\":\"log_level\",\"size\":5,\"order\":\"desc\",\"orderBy\":\"1\"}}]}",
+        "uiStateJSON": "{}",
+        "description": "",
+        "version": 1,
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"ecommerce-logs-*\",\"query\":{\"match_all\":{}},\"filter\":[]}"
+        }
+      }
+    },
+    {
+      "id": "error-logs-table",
+      "type": "visualization",
+      "attributes": {
+        "title": "Recent Error Logs",
+        "visState": "{\"title\":\"Recent Error Logs\",\"type\":\"table\",\"aggs\":[{\"id\":\"1\",\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"type\":\"terms\",\"schema\":\"bucket\",\"params\":{\"field\":\"service_name\",\"size\":10,\"order\":\"desc\",\"orderBy\":\"1\"}},{\"id\":\"3\",\"type\":\"terms\",\"schema\":\"bucket\",\"params\":{\"field\":\"exception_class\",\"size\":10,\"order\":\"desc\",\"orderBy\":\"1\"}}]}",
+        "uiStateJSON": "{}",
+        "description": "",
+        "version": 1,
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"ecommerce-logs-*\",\"query\":{\"match\":{\"log_level\":\"ERROR\"}},\"filter\":[]}"
+        }
+      }
+    },
+    {
+      "id": "response-times-histogram",
+      "type": "visualization",
+      "attributes": {
+        "title": "HTTP Response Times",
+        "visState": "{\"title\":\"HTTP Response Times\",\"type\":\"histogram\",\"aggs\":[{\"id\":\"1\",\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"type\":\"histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"http_duration\",\"interval\":100,\"min_doc_count\":1}}]}",
+        "uiStateJSON": "{}",
+        "description": "",
+        "version": 1,
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"ecommerce-logs-*\",\"query\":{\"exists\":{\"field\":\"http_duration\"}},\"filter\":[]}"
+        }
+      }
+    },
+    {
+      "id": "ecommerce-logs-index-pattern",
+      "type": "index-pattern",
+      "attributes": {
+        "title": "ecommerce-logs-*",
+        "timeFieldName": "@timestamp",
+        "fields": "[{\"name\":\"@timestamp\",\"type\":\"date\",\"searchable\":true,\"aggregatable\":true},{\"name\":\"message\",\"type\":\"string\",\"searchable\":true,\"aggregatable\":false},{\"name\":\"log_level\",\"type\":\"string\",\"searchable\":true,\"aggregatable\":true},{\"name\":\"service_name\",\"type\":\"string\",\"searchable\":true,\"aggregatable\":true},{\"name\":\"correlation_id\",\"type\":\"string\",\"searchable\":true,\"aggregatable\":true},{\"name\":\"tenant_id\",\"type\":\"string\",\"searchable\":true,\"aggregatable\":true},{\"name\":\"user_id\",\"type\":\"string\",\"searchable\":true,\"aggregatable\":true},{\"name\":\"http_status\",\"type\":\"number\",\"searchable\":true,\"aggregatable\":true},{\"name\":\"http_duration\",\"type\":\"number\",\"searchable\":true,\"aggregatable\":true},{\"name\":\"exception_class\",\"type\":\"string\",\"searchable\":true,\"aggregatable\":true},{\"name\":\"tags\",\"type\":\"string\",\"searchable\":true,\"aggregatable\":true}]"
+      }
+    }
+  ]
+}

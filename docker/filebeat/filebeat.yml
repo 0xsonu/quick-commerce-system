@@ -1,0 +1,153 @@
+# Filebeat configuration for ecommerce microservices log shipping
+
+# Filebeat inputs
+filebeat.inputs:
+  # Docker container logs
+  - type: container
+    enabled: true
+    paths:
+      - "/var/lib/docker/containers/*/*.log"
+
+    # Multiline pattern for Java stack traces
+    multiline.pattern: '^[[:space:]]+(at|\.\.\.)[[:space:]]+\b|^Caused by:'
+    multiline.negate: false
+    multiline.match: after
+    multiline.max_lines: 500
+    multiline.timeout: 5s
+
+    # Processors to add metadata
+    processors:
+      - add_docker_metadata:
+          host: "unix:///var/run/docker.sock"
+
+      # Add labels as fields
+      - add_labels:
+          labels:
+            environment: development
+            cluster: local
+
+      # Drop empty lines
+      - drop_event:
+          when:
+            regexp:
+              message: '^\s*$'
+
+      # Parse JSON logs
+      - decode_json_fields:
+          fields: ["message"]
+          target: "json"
+          overwrite_keys: true
+          add_error_key: true
+
+      # Extract service name from container name
+      - script:
+          lang: javascript
+          source: >
+            function process(event) {
+              var containerName = event.Get("container.name");
+              if (containerName) {
+                var serviceName = containerName.replace(/^\/?(ecommerce-)?/, '').split('-')[0];
+                event.Put("service.name", serviceName);
+              }
+            }
+
+  # Application log files (for services running outside Docker)
+  - type: log
+    enabled: true
+    paths:
+      - "/var/log/ecommerce/*.log"
+      - "/var/log/ecommerce/*/*.log"
+
+    # Fields for application logs
+    fields:
+      log_type: application
+      environment: development
+    fields_under_root: true
+
+    # Multiline for Java stack traces
+    multiline.pattern: '^[[:space:]]+(at|\.\.\.)[[:space:]]+\b|^Caused by:'
+    multiline.negate: false
+    multiline.match: after
+    multiline.max_lines: 500
+
+# Filebeat modules
+filebeat.config.modules:
+  path: ${path.config}/modules.d/*.yml
+  reload.enabled: false
+
+# Global processors
+processors:
+  # Add host information
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+
+  # Add Docker metadata
+  - add_docker_metadata: ~
+
+  # Add Kubernetes metadata (if running in K8s)
+  - add_kubernetes_metadata:
+      host: ${NODE_NAME}
+      matchers:
+        - logs_path:
+            logs_path: "/var/log/containers/"
+
+# Output configuration
+output.logstash:
+  hosts: ["logstash:5044"]
+
+  # Load balancing
+  loadbalance: true
+
+  # Compression
+  compression_level: 3
+
+  # Bulk settings
+  bulk_max_size: 2048
+
+  # Worker settings
+  worker: 1
+
+# Alternative output to Elasticsearch (commented out)
+# output.elasticsearch:
+#   hosts: ["elasticsearch:9200"]
+#   index: "filebeat-ecommerce-%{+yyyy.MM.dd}"
+#   template.name: "filebeat-ecommerce"
+#   template.pattern: "filebeat-ecommerce-*"
+
+# Logging configuration
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644
+
+# Monitoring
+monitoring.enabled: true
+monitoring.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+
+# HTTP endpoint for health checks
+http.enabled: true
+http.host: 0.0.0.0
+http.port: 5066
+
+# Setup configuration
+setup.template.enabled: true
+setup.template.name: "filebeat-ecommerce"
+setup.template.pattern: "filebeat-ecommerce-*"
+
+setup.ilm.enabled: true
+setup.ilm.rollover_alias: "filebeat-ecommerce"
+setup.ilm.pattern: "{now/d}-000001"
+
+# Kibana setup
+setup.kibana:
+  host: "kibana:5601"
+
+# Queue settings
+queue.mem:
+  events: 4096
+  flush.min_events: 512
+  flush.timeout: 1s

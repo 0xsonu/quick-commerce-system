@@ -1,0 +1,50 @@
+# Kibana configuration for ecommerce log visualization
+server.name: kibana
+server.host: "0.0.0.0"
+server.port: 5601
+
+# Elasticsearch configuration
+elasticsearch.hosts: ["http://elasticsearch:9200"]
+elasticsearch.username: ""
+elasticsearch.password: ""
+
+# Monitoring
+monitoring.ui.container.elasticsearch.enabled: true
+
+# Security (disabled for development)
+xpack.security.enabled: false
+xpack.encryptedSavedObjects.encryptionKey: "ecommerce-kibana-encryption-key-32-chars"
+
+# Logging
+logging.appenders.file.type: file
+logging.appenders.file.fileName: /usr/share/kibana/logs/kibana.log
+logging.appenders.file.layout.type: json
+
+logging.root.level: info
+logging.root.appenders: [default, file]
+
+# UI settings
+server.maxPayload: 1048576
+server.basePath: ""
+server.rewriteBasePath: false
+
+# Index patterns
+kibana.index: ".kibana"
+kibana.defaultAppId: "discover"
+
+# Saved objects
+savedObjects.maxImportPayloadBytes: 26214400
+
+# Maps
+map.includeElasticMapsService: true
+
+# Telemetry
+telemetry.enabled: false
+telemetry.optIn: false
+
+# News feed
+newsfeed.enabled: false
+
+# Advanced settings
+elasticsearch.requestTimeout: 30000
+elasticsearch.shardTimeout: 30000

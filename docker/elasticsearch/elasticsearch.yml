@@ -1,0 +1,45 @@
+# Elasticsearch configuration for ecommerce logging
+cluster.name: "ecommerce-logs"
+node.name: "elasticsearch-node-1"
+network.host: 0.0.0.0
+
+# Path settings
+path.data: /usr/share/elasticsearch/data
+path.logs: /usr/share/elasticsearch/logs
+
+# Memory settings
+bootstrap.memory_lock: true
+
+# Discovery settings for single node
+discovery.type: single-node
+
+# Security settings (disabled for development)
+xpack.security.enabled: false
+xpack.security.enrollment.enabled: false
+xpack.security.http.ssl.enabled: false
+xpack.security.transport.ssl.enabled: false
+
+# Index settings
+action.destructive_requires_name: true
+
+# Index lifecycle management
+xpack.ilm.enabled: true
+
+# Index templates for log retention
+indices.lifecycle.rollover.only_if_has_documents: true
+
+# Cluster settings
+cluster.routing.allocation.disk.threshold.enabled: true
+cluster.routing.allocation.disk.watermark.low: 85%
+cluster.routing.allocation.disk.watermark.high: 90%
+cluster.routing.allocation.disk.watermark.flood_stage: 95%
+
+# HTTP settings
+http.port: 9200
+http.cors.enabled: true
+http.cors.allow-origin: "*"
+http.cors.allow-methods: OPTIONS, HEAD, GET, POST, PUT, DELETE
+http.cors.allow-headers: X-Requested-With,X-Auth-Token,Content-Type,Content-Length
+
+# Transport settings
+transport.port: 9300

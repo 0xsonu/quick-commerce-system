@@ -1,0 +1,87 @@
+{
+  "trigger": {
+    "schedule": {
+      "interval": "2m"
+    }
+  },
+  "input": {
+    "search": {
+      "request": {
+        "search_type": "query_then_fetch",
+        "indices": ["ecommerce-logs-*"],
+        "body": {
+          "query": {
+            "bool": {
+              "must": [
+                {
+                  "exists": {
+                    "field": "http_duration"
+                  }
+                },
+                {
+                  "range": {
+                    "http_duration": {
+                      "gte": 5000
+                    }
+                  }
+                },
+                {
+                  "range": {
+                    "@timestamp": {
+                      "gte": "now-5m"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "slow_requests": {
+              "cardinality": {
+                "field": "correlation_id"
+              }
+            },
+            "by_service": {
+              "terms": {
+                "field": "service_name",
+                "size": 10
+              },
+              "aggs": {
+                "avg_response_time": {
+                  "avg": {
+                    "field": "http_duration"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "condition": {
+    "compare": {
+      "ctx.payload.aggregations.slow_requests.value": {
+        "gt": 5
+      }
+    }
+  },
+  "actions": {
+    "send_email": {
+      "email": {
+        "profile": "standard",
+        "to": ["devops@ecommerce.com"],
+        "subject": "Slow Response Time Alert - Ecommerce Platform",
+        "body": {
+          "text": "High number of slow responses (>5s) detected in the last 5 minutes.\n\nSlow request count: {{ctx.payload.aggregations.slow_requests.value}}\n\nServices with slow responses:\n{{#ctx.payload.aggregations.by_service.buckets}}\n- {{key}}: {{doc_count}} slow requests, avg: {{avg_response_time.value}}ms\n{{/ctx.payload.aggregations.by_service.buckets}}\n\nPlease investigate performance issues."
+        }
+      }
+    },
+    "log_alert": {
+      "logging": {
+        "level": "warn",
+        "text": "Slow response alert triggered: {{ctx.payload.aggregations.slow_requests.value}} slow requests in last 5 minutes"
+      }
+    }
+  }
+}
