@@ -1,15 +1,98 @@
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
+  external_labels:
+    cluster: "ecommerce-main"
+    replica: "main-1"
 
 rule_files:
-  # - "first_rules.yml"
-  # - "second_rules.yml"
+  - "/etc/prometheus/rules/*.yml"
 
 scrape_configs:
+  # Self-monitoring
   - job_name: "prometheus"
     static_configs:
       - targets: ["localhost:9090"]
+
+  # Infrastructure monitoring
+  - job_name: "node-exporter"
+    static_configs:
+      - targets: ["node-exporter:9100"]
+    scrape_interval: 15s
+
+  - job_name: "pushgateway"
+    static_configs:
+      - targets: ["pushgateway:9091"]
+    scrape_interval: 15s
+    honor_labels: true
+
+  # Database monitoring
+  - job_name: "mysql"
+    static_configs:
+      - targets: ["mysql:3306"]
+    scrape_interval: 30s
+
+  - job_name: "mongodb"
+    static_configs:
+      - targets: ["mongodb:27017"]
+    scrape_interval: 30s
+
+  - job_name: "redis"
+    static_configs:
+      - targets: ["redis:6379"]
+    scrape_interval: 30s
+
+  # Message broker monitoring
+  - job_name: "kafka"
+    static_configs:
+      - targets: ["kafka:9092"]
+    scrape_interval: 30s
+
+  # Blackbox monitoring for external endpoints
+  - job_name: "blackbox-http"
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://api-gateway:8081/health
+          - http://auth-service:8082/actuator/health
+          - http://user-service:8083/actuator/health
+          - http://product-service:8084/actuator/health
+          - http://inventory-service:8085/actuator/health
+          - http://cart-service:8086/actuator/health
+          - http://order-service:8087/actuator/health
+          - http://payment-service:8088/actuator/health
+          - http://shipping-service:8089/actuator/health
+          - http://notification-service:8090/actuator/health
+          - http://review-service:8091/actuator/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # gRPC health checks
+  - job_name: "blackbox-grpc"
+    metrics_path: /probe
+    params:
+      module: [grpc_plain]
+    static_configs:
+      - targets:
+          - product-service:9090
+          - inventory-service:9090
+          - user-service:9090
+          - order-service:9090
+          - payment-service:9090
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
 
   # Core Services
   - job_name: "api-gateway"

@@ -1,0 +1,62 @@
+groups:
+  - name: business
+    rules:
+      # Order processing alerts
+      - alert: HighOrderFailureRate
+        expr: rate(orders_failed_total[5m]) / rate(orders_total[5m]) * 100 > 2
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High order failure rate"
+          description: "Order failure rate is above 2% for more than 5 minutes."
+
+      # Payment processing alerts
+      - alert: HighPaymentFailureRate
+        expr: rate(payments_failed_total[5m]) / rate(payments_total[5m]) * 100 > 1
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High payment failure rate"
+          description: "Payment failure rate is above 1% for more than 3 minutes."
+
+      # Inventory alerts
+      - alert: LowInventoryStock
+        expr: inventory_stock_level < 10
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low inventory stock for {{ $labels.product_id }}"
+          description: "Stock level for product {{ $labels.product_id }} is below 10 units."
+
+      # Cart abandonment rate
+      - alert: HighCartAbandonmentRate
+        expr: rate(carts_abandoned_total[1h]) / rate(carts_created_total[1h]) * 100 > 70
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High cart abandonment rate"
+          description: "Cart abandonment rate is above 70% for more than 30 minutes."
+
+      # Review moderation alerts
+      - alert: HighReviewModerationQueue
+        expr: reviews_pending_moderation > 100
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High review moderation queue"
+          description: "More than 100 reviews are pending moderation for more than 15 minutes."
+
+      # Notification delivery alerts
+      - alert: HighNotificationFailureRate
+        expr: rate(notifications_failed_total[5m]) / rate(notifications_total[5m]) * 100 > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High notification failure rate"
+          description: "Notification failure rate is above 5% for more than 5 minutes."

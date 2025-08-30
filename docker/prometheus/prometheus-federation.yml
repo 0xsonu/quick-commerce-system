@@ -1,0 +1,45 @@
+global:
+  scrape_interval: 60s
+  evaluation_interval: 60s
+  external_labels:
+    cluster: "ecommerce-federation"
+    replica: "federation-1"
+
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+scrape_configs:
+  # Federation from main Prometheus server
+  - job_name: "federate"
+    scrape_interval: 15s
+    honor_labels: true
+    metrics_path: "/federate"
+    params:
+      "match[]":
+        # Aggregate metrics for long-term storage
+        - '{__name__=~"up|prometheus_.*"}'
+        - '{__name__=~"http_requests_total|http_request_duration_seconds.*"}'
+        - '{__name__=~"jvm_.*"}'
+        - '{__name__=~"system_.*"}'
+        - '{__name__=~"process_.*"}'
+        - '{__name__=~"application_.*"}'
+        - '{__name__=~"business_.*"}'
+        - '{__name__=~"database_.*"}'
+        - '{__name__=~"cache_.*"}'
+        - '{__name__=~"kafka_.*"}'
+        - '{__name__=~"node_.*"}'
+        - '{__name__=~"blackbox_.*"}'
+    static_configs:
+      - targets:
+          - "prometheus:9090"
+
+  # Self-monitoring
+  - job_name: "prometheus-federation"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
