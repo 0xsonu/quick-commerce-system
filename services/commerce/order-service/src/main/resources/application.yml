@@ -100,6 +100,19 @@ logging:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
+# Metrics Configuration
+ecommerce:
+  metrics:
+    enabled: true
+    application-name: order-service
+    application-version: 1.0.0
+    environment: ${ENVIRONMENT:development}
+    jvm-metrics-enabled: true
+    business-metrics-enabled: true
+    database-metrics-enabled: true
+    cache-metrics-enabled: false
+    method-timing-enabled: true
+
 # Custom Application Properties
 app:
   order:

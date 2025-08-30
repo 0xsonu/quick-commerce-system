@@ -8,6 +8,9 @@ import com.ecommerce.cartservice.model.Cart;
 import com.ecommerce.cartservice.model.CartItem;
 import com.ecommerce.cartservice.redis.CartRedisRepository;
 import com.ecommerce.cartservice.repository.ShoppingCartBackupRepository;
+import com.ecommerce.shared.metrics.annotations.BusinessMetric;
+import com.ecommerce.shared.metrics.annotations.Timed;
+import com.ecommerce.shared.metrics.collectors.BusinessMetricsCollector;
 import com.ecommerce.shared.utils.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,18 +33,21 @@ public class CartService {
     private final CartCalculationService calculationService;
     private final CartValidationService validationService;
     private final IdempotencyService idempotencyService;
+    private final BusinessMetricsCollector businessMetricsCollector;
 
     @Autowired
     public CartService(CartRedisRepository cartRedisRepository,
                       ShoppingCartBackupRepository cartBackupRepository,
                       CartCalculationService calculationService,
                       CartValidationService validationService,
-                      IdempotencyService idempotencyService) {
+                      IdempotencyService idempotencyService,
+                      BusinessMetricsCollector businessMetricsCollector) {
         this.cartRedisRepository = cartRedisRepository;
         this.cartBackupRepository = cartBackupRepository;
         this.calculationService = calculationService;
         this.validationService = validationService;
         this.idempotencyService = idempotencyService;
+        this.businessMetricsCollector = businessMetricsCollector;
     }
 
     /**
@@ -81,6 +87,8 @@ public class CartService {
      * Add item to cart with validation and idempotency
      */
     @Transactional
+    @BusinessMetric(value = "cart_item_added", tags = {"operation", "add"})
+    @Timed(value = "cart.add.time", description = "Time taken to add item to cart")
     public Cart addToCart(String tenantId, String userId, AddToCartRequest request) {
         logger.debug("Adding item to cart for tenant: {} and user: {}", tenantId, userId);
 
@@ -124,6 +132,10 @@ public class CartService {
             Cart savedCart = cartRedisRepository.save(cart);
             saveToBackup(savedCart);
 
+            // Record business metrics
+            businessMetricsCollector.recordCartOperation(tenantId, "add");
+            businessMetricsCollector.recordCartValue(tenantId, savedCart.getTotal());
+
             // Store result for idempotency
             if (request.getIdempotencyKey() != null) {
                 CartResponse response = new CartResponse(savedCart);
@@ -147,6 +159,8 @@ public class CartService {
      * Update cart item quantity with validation and idempotency
      */
     @Transactional
+    @BusinessMetric(value = "cart_item_updated", tags = {"operation", "update"})
+    @Timed(value = "cart.update.time", description = "Time taken to update cart item")
     public Cart updateCartItem(String tenantId, String userId, UpdateCartItemRequest request) {
         logger.debug("Updating cart item for tenant: {} and user: {}", tenantId, userId);
 
@@ -175,6 +189,10 @@ public class CartService {
             Cart savedCart = cartRedisRepository.save(cart);
             saveToBackup(savedCart);
 
+            // Record business metrics
+            businessMetricsCollector.recordCartOperation(tenantId, "update");
+            businessMetricsCollector.recordCartValue(tenantId, savedCart.getTotal());
+
             // Store result for idempotency
             if (request.getIdempotencyKey() != null) {
                 CartResponse response = new CartResponse(savedCart);
@@ -198,6 +216,8 @@ public class CartService {
      * Remove item from cart
      */
     @Transactional
+    @BusinessMetric(value = "cart_item_removed", tags = {"operation", "remove"})
+    @Timed(value = "cart.remove.time", description = "Time taken to remove item from cart")
     public Cart removeFromCart(String tenantId, String userId, String productId, String sku) {
         logger.debug("Removing item from cart for tenant: {} and user: {}", tenantId, userId);
 
@@ -208,6 +228,10 @@ public class CartService {
         // Save to Redis and backup to MySQL
         Cart savedCart = cartRedisRepository.save(cart);
         saveToBackup(savedCart);
+
+        // Record business metrics
+        businessMetricsCollector.recordCartOperation(tenantId, "remove");
+        businessMetricsCollector.recordCartValue(tenantId, savedCart.getTotal());
 
         logger.info("Removed item {} from cart for tenant: {} and user: {}", 
                    productId, tenantId, userId);

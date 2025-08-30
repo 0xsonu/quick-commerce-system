@@ -52,6 +52,19 @@ management:
       prometheus:
         enabled: true
 
+# Metrics Configuration
+ecommerce:
+  metrics:
+    enabled: true
+    application-name: product-service
+    application-version: 1.0.0
+    environment: ${ENVIRONMENT:development}
+    jvm-metrics-enabled: true
+    business-metrics-enabled: true
+    database-metrics-enabled: false
+    cache-metrics-enabled: true
+    method-timing-enabled: true
+
 app:
   kafka:
     topics:

@@ -57,6 +57,7 @@
         <module>shared-utils</module>
         <module>shared-security</module>
         <module>shared-proto</module>
+        <module>shared-metrics</module>
         
         <!-- Core Services -->
         <module>services/core/api-gateway</module>
@@ -216,6 +217,12 @@
             <dependency>
                 <groupId>com.ecommerce</groupId>
                 <artifactId>shared-proto</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>com.ecommerce</groupId>
+                <artifactId>shared-metrics</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>

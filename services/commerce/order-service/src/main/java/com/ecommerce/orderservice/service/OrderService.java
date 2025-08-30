@@ -9,6 +9,9 @@ import com.ecommerce.orderservice.exception.OrderValidationException;
 import com.ecommerce.orderservice.repository.OrderRepository;
 import com.ecommerce.orderservice.saga.OrderSagaOrchestrator;
 import com.ecommerce.orderservice.saga.OrderSagaState;
+import com.ecommerce.shared.metrics.annotations.BusinessMetric;
+import com.ecommerce.shared.metrics.annotations.Timed;
+import com.ecommerce.shared.metrics.collectors.BusinessMetricsCollector;
 import com.ecommerce.shared.utils.TenantContext;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,6 +40,7 @@ public class OrderService {
     private final OrderEventPublisher eventPublisher;
     private final IdempotencyService idempotencyService;
     private final OrderNumberGenerator orderNumberGenerator;
+    private final BusinessMetricsCollector businessMetricsCollector;
 
     @Autowired
     public OrderService(OrderRepository orderRepository, 
@@ -45,7 +49,8 @@ public class OrderService {
                        OrderSagaOrchestrator sagaOrchestrator,
                        OrderEventPublisher eventPublisher,
                        IdempotencyService idempotencyService,
-                       OrderNumberGenerator orderNumberGenerator) {
+                       OrderNumberGenerator orderNumberGenerator,
+                       BusinessMetricsCollector businessMetricsCollector) {
         this.orderRepository = orderRepository;
         this.orderMapper = orderMapper;
         this.objectMapper = objectMapper;
@@ -53,9 +58,12 @@ public class OrderService {
         this.eventPublisher = eventPublisher;
         this.idempotencyService = idempotencyService;
         this.orderNumberGenerator = orderNumberGenerator;
+        this.businessMetricsCollector = businessMetricsCollector;
     }
 
     @Transactional
+    @BusinessMetric(value = "order_created", tags = {"operation", "create"})
+    @Timed(value = "order.creation.time", description = "Time taken to create an order")
     public OrderResponse createOrder(CreateOrderRequest request) {
         return createOrderInternal(request, null);
     }
@@ -130,6 +138,9 @@ public class OrderService {
         // Save order
         Order savedOrder = orderRepository.save(order);
 
+        // Record business metrics
+        businessMetricsCollector.recordOrderCreated(TenantContext.getTenantId(), savedOrder.getTotalAmount());
+
         // Publish OrderCreated event
         eventPublisher.publishOrderCreated(savedOrder)
             .whenComplete((result, throwable) -> {
@@ -178,6 +189,8 @@ public class OrderService {
     }
 
     @Transactional
+    @BusinessMetric(value = "order_status_changed", tags = {"operation", "status_update"})
+    @Timed(value = "order.status.update.time", description = "Time taken to update order status")
     public OrderResponse updateOrderStatus(Long orderId, UpdateOrderStatusRequest request) {
         logger.info("Updating order status: {} to {}", orderId, request.getNewStatus());
 
@@ -187,6 +200,13 @@ public class OrderService {
         try {
             order.updateStatus(request.getNewStatus());
             Order savedOrder = orderRepository.save(order);
+
+            // Record business metrics
+            businessMetricsCollector.recordOrderStatusChange(
+                TenantContext.getTenantId(), 
+                oldStatus.toString(), 
+                request.getNewStatus().toString()
+            );
 
             // Publish appropriate event based on new status
             publishStatusChangeEvent(savedOrder, request.getNewStatus(), request.getReason());
