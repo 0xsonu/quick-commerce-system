@@ -34,6 +34,9 @@ class ReviewServiceTest {
     @Mock
     private ReviewRepository reviewRepository;
 
+    @Mock
+    private ReviewEventPublisher eventPublisher;
+
     @InjectMocks
     private ReviewService reviewService;
 
@@ -73,6 +76,7 @@ class ReviewServiceTest {
         
         verify(reviewRepository).existsByTenantIdAndUserIdAndProductId(TENANT_ID, USER_ID, PRODUCT_ID);
         verify(reviewRepository).save(any(Review.class));
+        verify(eventPublisher).publishReviewCreated(any(Review.class));
     }
 
     @Test
@@ -112,6 +116,7 @@ class ReviewServiceTest {
         
         verify(reviewRepository).findById(REVIEW_ID);
         verify(reviewRepository).save(any(Review.class));
+        verify(eventPublisher).publishReviewUpdated(any(Review.class), eq(5));
     }
 
     @Test
@@ -246,6 +251,7 @@ class ReviewServiceTest {
         
         verify(reviewRepository).findById(REVIEW_ID);
         verify(reviewRepository).save(any(Review.class));
+        verify(eventPublisher).publishReviewModerated(any(Review.class));
     }
 
     @Test
@@ -267,6 +273,7 @@ class ReviewServiceTest {
         
         verify(reviewRepository).findById(REVIEW_ID);
         verify(reviewRepository).save(any(Review.class));
+        verify(eventPublisher).publishReviewModerated(any(Review.class));
     }
 
     @Test
@@ -280,6 +287,7 @@ class ReviewServiceTest {
 
         // Then
         verify(reviewRepository).findById(REVIEW_ID);
+        verify(eventPublisher).publishReviewDeleted(any(Review.class), eq("User requested deletion"));
         verify(reviewRepository).delete(review);
     }
 
@@ -314,6 +322,7 @@ class ReviewServiceTest {
         // Then
         verify(reviewRepository).findById(REVIEW_ID);
         verify(reviewRepository).save(any(Review.class));
+        verify(eventPublisher).publishReviewFlagged(any(Review.class), eq(null));
     }
 
     @Test

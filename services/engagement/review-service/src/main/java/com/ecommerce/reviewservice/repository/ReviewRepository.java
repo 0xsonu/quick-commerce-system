@@ -55,4 +55,18 @@ public interface ReviewRepository extends MongoRepository<Review, String> {
     // Find reviews by rating range
     @Query("{ 'tenantId': ?0, 'productId': ?1, 'status': 'APPROVED', 'rating': { $gte: ?2, $lte: ?3 } }")
     Page<Review> findByTenantIdAndProductIdAndRatingBetween(String tenantId, String productId, Integer minRating, Integer maxRating, Pageable pageable);
+
+    // Additional methods for analytics and reporting
+    
+    // Find all reviews for a product (for analytics)
+    List<Review> findByTenantIdAndProductId(String tenantId, String productId);
+
+    // Find all reviews for a tenant (for analytics)
+    List<Review> findByTenantId(String tenantId);
+
+    // Find reviews moderated in a time period
+    List<Review> findByTenantIdAndModeratedAtBetween(String tenantId, java.time.LocalDateTime startDate, java.time.LocalDateTime endDate);
+
+    // Count reviews by status
+    long countByTenantIdAndStatus(String tenantId, ReviewStatus status);
 }

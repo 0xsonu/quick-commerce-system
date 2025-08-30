@@ -131,11 +131,12 @@ public class ReviewController {
     @PostMapping("/{reviewId}/flag")
     public ResponseEntity<ApiResponse<Void>> flagReview(
             @PathVariable String reviewId,
-            @RequestParam String reason) {
+            @RequestParam String reason,
+            @RequestHeader(value = "X-User-ID", required = false) Long flaggedBy) {
         
-        logger.info("Flagging review {} for reason: {}", reviewId, reason);
+        logger.info("Flagging review {} for reason: {} by user {}", reviewId, reason, flaggedBy);
         
-        reviewService.flagReview(reviewId, reason);
+        reviewService.flagReview(reviewId, reason, flaggedBy);
         
         return ResponseEntity.ok(ApiResponse.success(null, "Review flagged successfully"));
     }

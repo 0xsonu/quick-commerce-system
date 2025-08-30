@@ -30,10 +30,12 @@ public class ReviewService {
     private static final Logger logger = LoggerFactory.getLogger(ReviewService.class);
 
     private final ReviewRepository reviewRepository;
+    private final ReviewEventPublisher eventPublisher;
 
     @Autowired
-    public ReviewService(ReviewRepository reviewRepository) {
+    public ReviewService(ReviewRepository reviewRepository, ReviewEventPublisher eventPublisher) {
         this.reviewRepository = reviewRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     public ReviewResponse createReview(CreateReviewRequest request, Long userId) {
@@ -53,6 +55,9 @@ public class ReviewService {
         Review savedReview = reviewRepository.save(review);
         
         logger.info("Review created with ID: {}", savedReview.getId());
+        
+        // Publish event
+        eventPublisher.publishReviewCreated(savedReview);
         
         return mapToResponse(savedReview);
     }
@@ -74,6 +79,8 @@ public class ReviewService {
             throw new IllegalStateException("Cannot update rejected reviews");
         }
 
+        Integer previousRating = review.getRating();
+        
         review.setRating(request.getRating());
         review.setTitle(request.getTitle());
         review.setComment(request.getComment());
@@ -87,6 +94,9 @@ public class ReviewService {
         Review savedReview = reviewRepository.save(review);
         
         logger.info("Review updated: {}", savedReview.getId());
+        
+        // Publish event
+        eventPublisher.publishReviewUpdated(savedReview, previousRating);
         
         return mapToResponse(savedReview);
     }
@@ -151,6 +161,9 @@ public class ReviewService {
         
         logger.info("Review {} moderated with status: {}", reviewId, request.getStatus());
         
+        // Publish event
+        eventPublisher.publishReviewModerated(savedReview);
+        
         return mapToResponse(savedReview);
     }
 
@@ -166,12 +179,19 @@ public class ReviewService {
             throw new UnauthorizedReviewAccessException("User can only delete their own reviews");
         }
 
+        // Publish event before deletion
+        eventPublisher.publishReviewDeleted(review, "User requested deletion");
+        
         reviewRepository.delete(review);
         
         logger.info("Review deleted: {}", reviewId);
     }
 
     public void flagReview(String reviewId, String reason) {
+        flagReview(reviewId, reason, null);
+    }
+
+    public void flagReview(String reviewId, String reason, Long flaggedBy) {
         String tenantId = TenantContext.getTenantId();
         
         logger.info("Flagging review {} in tenant {} for reason: {}", reviewId, tenantId, reason);
@@ -179,9 +199,12 @@ public class ReviewService {
         Review review = findReviewByIdAndTenant(reviewId, tenantId);
         review.flag(reason);
         
-        reviewRepository.save(review);
+        Review savedReview = reviewRepository.save(review);
         
         logger.info("Review flagged: {}", reviewId);
+        
+        // Publish event
+        eventPublisher.publishReviewFlagged(savedReview, flaggedBy);
     }
 
     @Transactional(readOnly = true)
