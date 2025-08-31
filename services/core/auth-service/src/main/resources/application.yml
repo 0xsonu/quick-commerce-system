@@ -1,6 +1,11 @@
 server:
   port: 8082
 
+grpc:
+  server:
+    port: 9082
+    enable-reflection: true
+
 spring:
   application:
     name: auth-service

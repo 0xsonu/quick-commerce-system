@@ -1,6 +1,11 @@
 server:
   port: 8089
 
+grpc:
+  server:
+    port: 9090
+    enable-reflection: true
+
 spring:
   application:
     name: notification-service
@@ -66,8 +71,17 @@ spring:
 grpc:
   client:
     user-service:
-      host: ${USER_SERVICE_HOST:user-service}
-      port: ${USER_SERVICE_GRPC_PORT:9090}
+      address: static://user-service:9083
+      negotiation-type: plaintext
+      enable-keep-alive: true
+      keep-alive-time: 30s
+      keep-alive-timeout: 5s
+    order-service:
+      address: static://order-service:9087
+      negotiation-type: plaintext
+      enable-keep-alive: true
+      keep-alive-time: 30s
+      keep-alive-timeout: 5s
 
   # Email configuration
   mail:

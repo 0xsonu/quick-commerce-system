@@ -1,18 +1,18 @@
 server:
-  port: 8083
+  port: 8088
 
 grpc:
   server:
-    port: 9083
+    port: 9088
     enable-reflection: true
 
 spring:
   application:
-    name: user-service
+    name: payment-service
   datasource:
-    url: jdbc:mysql://localhost:3306/user_service
-    username: user_user
-    password: user_password
+    url: jdbc:mysql://localhost:3306/payment_service
+    username: payment_user
+    password: payment_password
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -22,19 +22,10 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
-  redis:
-    host: localhost
-    port: 6379
-    timeout: 2000ms
-    lettuce:
-      pool:
-        max-active: 8
-        max-idle: 8
-        min-idle: 0
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
-      group-id: user-service-group
+      group-id: payment-service-group
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
@@ -43,6 +34,17 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+app:
+  payment:
+    gateway:
+      stripe:
+        api-key: ${STRIPE_API_KEY:sk_test_dummy}
+        webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_dummy}
+      timeout-seconds: 30
+    retry:
+      max-attempts: 3
+      delay-seconds: 2
 
 management:
   endpoints:

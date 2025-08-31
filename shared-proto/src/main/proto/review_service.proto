@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package ecommerce.review;
+
+import "common.proto";
+
+option java_package = "com.ecommerce.reviewservice.proto";
+option java_outer_classname = "ReviewServiceProtos";
+
+// Review Service gRPC interface
+service ReviewService {
+  rpc GetReview(GetReviewRequest) returns (GetReviewResponse);
+  rpc GetProductReviews(GetProductReviewsRequest) returns (GetProductReviewsResponse);
+  rpc GetUserReviews(GetUserReviewsRequest) returns (GetUserReviewsResponse);
+  rpc GetProductRatingAggregate(GetProductRatingAggregateRequest) returns (GetProductRatingAggregateResponse);
+  rpc HasUserReviewedProduct(HasUserReviewedProductRequest) returns (HasUserReviewedProductResponse);
+}
+
+// Get review by ID
+message GetReviewRequest {
+  ecommerce.common.TenantContext context = 1;
+  string review_id = 2;
+}
+
+message GetReviewResponse {
+  Review review = 1;
+}
+
+// Get reviews for a product
+message GetProductReviewsRequest {
+  ecommerce.common.TenantContext context = 1;
+  string product_id = 2;
+  ecommerce.common.PageRequest page_request = 3;
+  int32 min_rating = 4;
+  int32 max_rating = 5;
+}
+
+message GetProductReviewsResponse {
+  repeated Review reviews = 1;
+  ecommerce.common.PageResponse page_response = 2;
+}
+
+// Get reviews by user
+message GetUserReviewsRequest {
+  ecommerce.common.TenantContext context = 1;
+  int64 user_id = 2;
+  ecommerce.common.PageRequest page_request = 3;
+}
+
+message GetUserReviewsResponse {
+  repeated Review reviews = 1;
+  ecommerce.common.PageResponse page_response = 2;
+}
+
+// Get product rating aggregate
+message GetProductRatingAggregateRequest {
+  ecommerce.common.TenantContext context = 1;
+  string product_id = 2;
+}
+
+message GetProductRatingAggregateResponse {
+  string product_id = 1;
+  double average_rating = 2;
+  int64 total_reviews = 3;
+  repeated RatingCount rating_counts = 4;
+}
+
+// Check if user has reviewed product
+message HasUserReviewedProductRequest {
+  ecommerce.common.TenantContext context = 1;
+  int64 user_id = 2;
+  string product_id = 3;
+}
+
+message HasUserReviewedProductResponse {
+  bool has_reviewed = 1;
+  string review_id = 2;
+}
+
+// Review data model
+message Review {
+  string id = 1;
+  string product_id = 2;
+  int64 user_id = 3;
+  string user_name = 4;
+  int32 rating = 5;
+  string title = 6;
+  string comment = 7;
+  string status = 8;  // PENDING, APPROVED, REJECTED
+  bool verified_purchase = 9;
+  int32 helpful_votes = 10;
+  int32 total_votes = 11;
+  int64 created_at = 12;
+  int64 updated_at = 13;
+}
+
+// Rating count data model
+message RatingCount {
+  int32 rating = 1;
+  int64 count = 2;
+}

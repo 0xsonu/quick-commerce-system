@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package ecommerce.auth;
+
+import "common.proto";
+
+option java_package = "com.ecommerce.authservice.proto";
+option java_outer_classname = "AuthServiceProtos";
+
+// Auth Service gRPC interface
+service AuthService {
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+  rpc GetUserFromToken(GetUserFromTokenRequest) returns (GetUserFromTokenResponse);
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+}
+
+// Validate JWT token
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+message ValidateTokenResponse {
+  bool is_valid = 1;
+  string tenant_id = 2;
+  string user_id = 3;
+  repeated string roles = 4;
+  int64 expires_at = 5;
+}
+
+// Get user info from token
+message GetUserFromTokenRequest {
+  string token = 1;
+}
+
+message GetUserFromTokenResponse {
+  bool is_valid = 1;
+  string tenant_id = 2;
+  string user_id = 3;
+  string email = 4;
+  repeated string roles = 5;
+}
+
+// Refresh JWT token
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message RefreshTokenResponse {
+  bool success = 1;
+  string access_token = 2;
+  string refresh_token = 3;
+  int64 expires_at = 4;
+  string error_message = 5;
+}

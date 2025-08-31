@@ -67,8 +67,11 @@ server:
   servlet:
     context-path: /
 
-# gRPC Client Configuration
+# gRPC Configuration
 grpc:
+  server:
+    port: 9085
+    enable-reflection: true
   client:
     product-service:
       address: "static://product-service:9084"
@@ -78,7 +81,7 @@ grpc:
       keep-alive-timeout: 5s
       keep-alive-without-calls: true
     inventory-service:
-      address: "static://inventory-service:9085"
+      address: "static://inventory-service:9086"
       negotiation-type: plaintext
       enable-keep-alive: true
       keep-alive-time: 30s

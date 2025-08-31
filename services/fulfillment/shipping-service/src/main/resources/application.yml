@@ -1,6 +1,24 @@
 server:
   port: 8088
 
+grpc:
+  server:
+    port: 9089
+    enable-reflection: true
+  client:
+    order-service:
+      address: static://order-service:9087
+      negotiation-type: plaintext
+      enable-keep-alive: true
+      keep-alive-time: 30s
+      keep-alive-timeout: 5s
+    user-service:
+      address: static://user-service:9083
+      negotiation-type: plaintext
+      enable-keep-alive: true
+      keep-alive-time: 30s
+      keep-alive-timeout: 5s
+
 spring:
   application:
     name: shipping-service

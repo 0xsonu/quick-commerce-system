@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+package ecommerce.cart;
+
+import "common.proto";
+
+option java_package = "com.ecommerce.cartservice.proto";
+option java_outer_classname = "CartServiceProtos";
+
+// Cart Service gRPC interface
+service CartService {
+  rpc GetCart(GetCartRequest) returns (GetCartResponse);
+  rpc AddToCart(AddToCartRequest) returns (AddToCartResponse);
+  rpc UpdateCartItem(UpdateCartItemRequest) returns (UpdateCartItemResponse);
+  rpc RemoveFromCart(RemoveFromCartRequest) returns (RemoveFromCartResponse);
+  rpc ClearCart(ClearCartRequest) returns (ClearCartResponse);
+  rpc ValidateCart(ValidateCartRequest) returns (ValidateCartResponse);
+}
+
+// Get cart by user ID
+message GetCartRequest {
+  ecommerce.common.TenantContext context = 1;
+  int64 user_id = 2;
+}
+
+message GetCartResponse {
+  Cart cart = 1;
+}
+
+// Add item to cart
+message AddToCartRequest {
+  ecommerce.common.TenantContext context = 1;
+  int64 user_id = 2;
+  string product_id = 3;
+  string sku = 4;
+  int32 quantity = 5;
+}
+
+message AddToCartResponse {
+  bool success = 1;
+  Cart cart = 2;
+  string error_message = 3;
+}
+
+// Update cart item quantity
+message UpdateCartItemRequest {
+  ecommerce.common.TenantContext context = 1;
+  int64 user_id = 2;
+  string product_id = 3;
+  int32 new_quantity = 4;
+}
+
+message UpdateCartItemResponse {
+  bool success = 1;
+  Cart cart = 2;
+  string error_message = 3;
+}
+
+// Remove item from cart
+message RemoveFromCartRequest {
+  ecommerce.common.TenantContext context = 1;
+  int64 user_id = 2;
+  string product_id = 3;
+}
+
+message RemoveFromCartResponse {
+  bool success = 1;
+  Cart cart = 2;
+  string error_message = 3;
+}
+
+// Clear entire cart
+message ClearCartRequest {
+  ecommerce.common.TenantContext context = 1;
+  int64 user_id = 2;
+}
+
+message ClearCartResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+// Validate cart before checkout
+message ValidateCartRequest {
+  ecommerce.common.TenantContext context = 1;
+  int64 user_id = 2;
+}
+
+message ValidateCartResponse {
+  bool is_valid = 1;
+  Cart cart = 2;
+  repeated string validation_errors = 3;
+}
+
+// Cart data model
+message Cart {
+  int64 user_id = 1;
+  repeated CartItem items = 2;
+  ecommerce.common.Money subtotal = 3;
+  ecommerce.common.Money tax_amount = 4;
+  ecommerce.common.Money total_amount = 5;
+  int32 total_items = 6;
+  int64 created_at = 7;
+  int64 updated_at = 8;
+}
+
+// Cart item data model
+message CartItem {
+  string product_id = 1;
+  string sku = 2;
+  string product_name = 3;
+  int32 quantity = 4;
+  ecommerce.common.Money unit_price = 5;
+  ecommerce.common.Money total_price = 6;
+  bool is_available = 7;
+  int64 added_at = 8;
+}

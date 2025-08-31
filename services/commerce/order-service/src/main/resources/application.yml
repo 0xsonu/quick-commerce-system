@@ -56,20 +56,26 @@ spring:
 # gRPC Configuration
 grpc:
   server:
-    port: 9086
+    port: 9087
     enable-reflection: true
   client:
     inventory-service:
-      address: static://inventory-service:9084
+      address: static://inventory-service:9086
       negotiation-type: plaintext
     product-service:
-      address: static://product-service:9082
+      address: static://product-service:9084
       negotiation-type: plaintext
     user-service:
-      address: static://user-service:9081
+      address: static://user-service:9083
       negotiation-type: plaintext
     payment-service:
-      address: static://payment-service:9087
+      address: static://payment-service:9088
+      negotiation-type: plaintext
+    shipping-service:
+      address: static://shipping-service:9089
+      negotiation-type: plaintext
+    notification-service:
+      address: static://notification-service:9090
       negotiation-type: plaintext
 
 # Management and Monitoring
