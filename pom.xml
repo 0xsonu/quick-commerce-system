@@ -60,6 +60,7 @@
         <module>shared-metrics</module>
         <module>shared-logging</module>
         <module>shared-tracing</module>
+        <module>shared-health</module>
         
         <!-- Core Services -->
         <module>services/core/api-gateway</module>
@@ -299,6 +300,12 @@
             <dependency>
                 <groupId>com.ecommerce</groupId>
                 <artifactId>shared-tracing</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>com.ecommerce</groupId>
+                <artifactId>shared-health</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>

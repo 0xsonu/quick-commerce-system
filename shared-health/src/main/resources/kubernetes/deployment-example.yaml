@@ -1,0 +1,158 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ecommerce-service
+  labels:
+    app: ecommerce-service
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ecommerce-service
+  template:
+    metadata:
+      labels:
+        app: ecommerce-service
+    spec:
+      containers:
+        - name: ecommerce-service
+          image: ecommerce/service:latest
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 9090
+              name: grpc
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "kubernetes"
+            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+              value: "health,info,metrics,prometheus"
+            - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED
+              value: "true"
+            - name: MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS
+              value: "always"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          # Liveness probe - determines if container should be restarted
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 30 # Wait 30s after container starts
+            periodSeconds: 10 # Check every 10s
+            timeoutSeconds: 5 # Timeout after 5s
+            failureThreshold: 3 # Restart after 3 consecutive failures
+            successThreshold: 1 # Consider healthy after 1 success
+          # Readiness probe - determines if container should receive traffic
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 10 # Wait 10s after container starts
+            periodSeconds: 5 # Check every 5s
+            timeoutSeconds: 3 # Timeout after 3s
+            failureThreshold: 3 # Remove from service after 3 failures
+            successThreshold: 1 # Add to service after 1 success
+          # Startup probe - determines if container has finished starting
+          startupProbe:
+            httpGet:
+              path: /actuator/health/startup
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 10 # Wait 10s after container starts
+            periodSeconds: 10 # Check every 10s
+            timeoutSeconds: 5 # Timeout after 5s
+            failureThreshold: 30 # Allow up to 5 minutes for startup (30 * 10s)
+            successThreshold: 1 # Consider started after 1 success
+          # Volume mounts for configuration
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: ecommerce-service-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ecommerce-service
+  labels:
+    app: ecommerce-service
+spec:
+  selector:
+    app: ecommerce-service
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
+    - name: grpc
+      port: 9090
+      targetPort: 9090
+      protocol: TCP
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ecommerce-service-config
+data:
+  application.yml: |
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health,info,metrics,prometheus
+          base-path: /actuator
+      endpoint:
+        health:
+          show-details: always
+          show-components: always
+          probes:
+            enabled: true
+      health:
+        db:
+          enabled: true
+        redis:
+          enabled: true
+        mongo:
+          enabled: true
+        kafka:
+          enabled: true
+        jvm:
+          enabled: true
+        composite:
+          enabled: true
+        livenessstate:
+          enabled: true
+        readinessstate:
+          enabled: true
+
+    # Health check thresholds
+    health:
+      thresholds:
+        memory:
+          warning: 0.85
+          critical: 0.95
+        gc:
+          warning: 1000
+        threads:
+          warning: 500
+        database:
+          slow_query: 1000
+          connection_timeout: 5000
+        redis:
+          slow_operation: 500
+        mongo:
+          slow_operation: 1000
+        kafka:
+          slow_operation: 2000
