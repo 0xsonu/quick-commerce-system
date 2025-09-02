@@ -14,10 +14,16 @@ import org.springframework.context.annotation.FilterType;
 )
 @ComponentScan(
     basePackages = "com.ecommerce",
-    excludeFilters = @ComponentScan.Filter(
-        type = FilterType.ASSIGNABLE_TYPE,
-        classes = JwtAuthenticationFilter.class
-    )
+    excludeFilters = {
+        @ComponentScan.Filter(
+            type = FilterType.ASSIGNABLE_TYPE,
+            classes = JwtAuthenticationFilter.class
+        ),
+        @ComponentScan.Filter(
+            type = FilterType.ASSIGNABLE_TYPE,
+            classes = com.ecommerce.shared.utils.config.DatabaseConfig.class
+        )
+    }
 )
 public class ApiGatewayApplication {
 

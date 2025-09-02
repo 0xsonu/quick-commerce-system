@@ -59,8 +59,9 @@ class CacheWarmupSchedulerTest {
         when(userCacheService.warmUpUserCache(anyString())).thenReturn(CompletableFuture.completedFuture(null));
 
         // Act
-        CompletableFuture<Void> result = cacheWarmupScheduler.scheduledCacheRefresh();
-        result.get(); // Wait for completion
+        cacheWarmupScheduler.scheduledCacheRefresh();
+        // Wait a bit for async execution
+        Thread.sleep(100);
 
         // Assert
         verify(userRepository).findDistinctTenantIds();
@@ -130,8 +131,9 @@ class CacheWarmupSchedulerTest {
         when(userRepository.findDistinctTenantIds()).thenThrow(new RuntimeException("Database error"));
 
         // Act & Assert - Should not throw exception
-        CompletableFuture<Void> result = cacheWarmupScheduler.scheduledCacheRefresh();
-        result.get(); // Wait for completion
+        cacheWarmupScheduler.scheduledCacheRefresh();
+        // Wait a bit for async execution
+        Thread.sleep(100);
 
         verify(userRepository).findDistinctTenantIds();
     }

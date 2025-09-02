@@ -64,7 +64,7 @@ public class CacheWarmupScheduler {
      */
     @Scheduled(fixedRate = 7200000) // 2 hours in milliseconds
     @Async
-    public CompletableFuture<Void> scheduledCacheRefresh() {
+    public void scheduledCacheRefresh() {
         logger.info("Starting scheduled cache refresh");
         
         try {
@@ -88,8 +88,6 @@ public class CacheWarmupScheduler {
         } catch (Exception e) {
             logger.error("Error during scheduled cache refresh", e);
         }
-        
-        return CompletableFuture.completedFuture(null);
     }
 
     /**

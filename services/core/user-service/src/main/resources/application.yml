@@ -14,6 +14,11 @@ spring:
     username: user_user
     password: user_password
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      jdbc-url: jdbc:mysql://localhost:3306/user_service
+      username: user_user
+      password: user_password
+      driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
       ddl-auto: update

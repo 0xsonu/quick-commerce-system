@@ -23,7 +23,7 @@ public class DatabaseConfig {
     @Bean
     @Primary
     @ConfigurationProperties(prefix = "spring.datasource.hikari")
-    public DataSource primaryDataSource() {
+    public HikariConfig hikariConfig() {
         HikariConfig config = new HikariConfig();
         
         // Connection pool sizing
@@ -61,7 +61,13 @@ public class DatabaseConfig {
         // Pool name for monitoring
         config.setPoolName("HikariCP-Primary");
         
-        return new HikariDataSource(config);
+        return config;
+    }
+    
+    @Bean
+    @Primary
+    public DataSource primaryDataSource(HikariConfig hikariConfig) {
+        return new HikariDataSource(hikariConfig);
     }
     
     /**
