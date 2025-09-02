@@ -33,6 +33,30 @@
         </dependency>
         
         <dependency>
+            <groupId>com.ecommerce</groupId>
+            <artifactId>shared-proto</artifactId>
+        </dependency>
+        
+        <!-- gRPC Spring Boot Starter -->
+        <dependency>
+            <groupId>net.devh</groupId>
+            <artifactId>grpc-spring-boot-starter</artifactId>
+            <version>2.15.0.RELEASE</version>
+        </dependency>
+        
+        <!-- gRPC Client -->
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-netty-shaded</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-netty</artifactId>
+            <version>1.58.0</version>
+        </dependency>
+        
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
@@ -91,6 +115,14 @@
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        
+        <!-- gRPC Testing -->
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-testing</artifactId>
+            <version>1.58.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

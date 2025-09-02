@@ -227,10 +227,65 @@ app:
       filter:
         enabled: false # Disable servlet-based JWT filter for reactive gateway
 
+# gRPC client configuration
+grpc:
+  server:
+    port: -1 # Disable gRPC server since this is only a client
+  client:
+    GLOBAL:
+      keep-alive-time: 30s
+      keep-alive-timeout: 5s
+      keep-alive-without-calls: true
+      max-inbound-message-size: 4MB
+      max-inbound-metadata-size: 8KB
+      user-agent: "ecommerce-gateway/1.0"
+      negotiation-type: plaintext
+
+    auth-service:
+      address: "static://${AUTH_SERVICE_HOST:localhost}:${AUTH_SERVICE_GRPC_PORT:9082}"
+      load-balancer: round_robin
+
+    user-service:
+      address: "static://${USER_SERVICE_HOST:localhost}:${USER_SERVICE_GRPC_PORT:9083}"
+      load-balancer: round_robin
+
+    product-service:
+      address: "static://${PRODUCT_SERVICE_HOST:localhost}:${PRODUCT_SERVICE_GRPC_PORT:9084}"
+      load-balancer: round_robin
+
+    inventory-service:
+      address: "static://${INVENTORY_SERVICE_HOST:localhost}:${INVENTORY_SERVICE_GRPC_PORT:9085}"
+      load-balancer: round_robin
+
+    cart-service:
+      address: "static://${CART_SERVICE_HOST:localhost}:${CART_SERVICE_GRPC_PORT:9086}"
+      load-balancer: round_robin
+
+    order-service:
+      address: "static://${ORDER_SERVICE_HOST:localhost}:${ORDER_SERVICE_GRPC_PORT:9087}"
+      load-balancer: round_robin
+
+    payment-service:
+      address: "static://${PAYMENT_SERVICE_HOST:localhost}:${PAYMENT_SERVICE_GRPC_PORT:9088}"
+      load-balancer: round_robin
+
+    shipping-service:
+      address: "static://${SHIPPING_SERVICE_HOST:localhost}:${SHIPPING_SERVICE_GRPC_PORT:9089}"
+      load-balancer: round_robin
+
+    notification-service:
+      address: "static://${NOTIFICATION_SERVICE_HOST:localhost}:${NOTIFICATION_SERVICE_GRPC_PORT:9090}"
+      load-balancer: round_robin
+
+    review-service:
+      address: "static://${REVIEW_SERVICE_HOST:localhost}:${REVIEW_SERVICE_GRPC_PORT:9091}"
+      load-balancer: round_robin
+
 logging:
   level:
     com.ecommerce: INFO
     org.springframework.cloud.gateway: DEBUG
     io.github.resilience4j: DEBUG
+    net.devh.boot.grpc: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{correlationId}] [%X{tenantId}] %logger{36} - %msg%n"
