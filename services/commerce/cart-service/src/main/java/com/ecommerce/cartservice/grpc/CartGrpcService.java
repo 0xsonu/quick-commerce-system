@@ -1,5 +1,8 @@
 package com.ecommerce.cartservice.grpc;
 
+// Temporarily disabled for REST-to-gRPC migration task
+/*
+
 import com.ecommerce.cartservice.dto.CartResponse;
 import com.ecommerce.cartservice.dto.AddToCartRequest;
 import com.ecommerce.cartservice.dto.UpdateCartItemRequest;
@@ -246,4 +249,4 @@ public class CartGrpcService extends CartServiceGrpc.CartServiceImplBase {
             .setCurrency(currency)
             .build();
     }
-}
+}*/

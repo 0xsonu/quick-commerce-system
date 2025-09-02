@@ -80,6 +80,9 @@ grpc:
       keep-alive-time: 30s
       keep-alive-timeout: 5s
       keep-alive-without-calls: true
+      max-inbound-message-size: 4MB
+      max-inbound-metadata-size: 8KB
+      deadline: 5s
     inventory-service:
       address: "static://inventory-service:9086"
       negotiation-type: plaintext
@@ -87,6 +90,9 @@ grpc:
       keep-alive-time: 30s
       keep-alive-timeout: 5s
       keep-alive-without-calls: true
+      max-inbound-message-size: 4MB
+      max-inbound-metadata-size: 8KB
+      deadline: 5s
 
 # Management and Monitoring
 management:
@@ -128,12 +134,8 @@ cart:
     expired-days: 7
     batch-size: 100
 
-# External Services Configuration
-services:
-  product:
-    url: ${PRODUCT_SERVICE_URL:http://product-service:8080}
-  inventory:
-    url: ${INVENTORY_SERVICE_URL:http://inventory-service:8080}
+# External Services Configuration - Using gRPC only
+# REST service URLs removed as we now use gRPC exclusively for internal communication
 
 ---
 # Docker/Production Profile

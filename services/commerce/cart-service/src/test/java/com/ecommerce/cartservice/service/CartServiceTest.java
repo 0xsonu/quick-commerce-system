@@ -10,6 +10,7 @@ import com.ecommerce.cartservice.model.Cart;
 import com.ecommerce.cartservice.model.CartItem;
 import com.ecommerce.cartservice.redis.CartRedisRepository;
 import com.ecommerce.cartservice.repository.ShoppingCartBackupRepository;
+import com.ecommerce.shared.metrics.collectors.BusinessMetricsCollector;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,6 +42,9 @@ class CartServiceTest {
     @Mock
     private IdempotencyService idempotencyService;
 
+    @Mock
+    private BusinessMetricsCollector businessMetricsCollector;
+
     private CartService cartService;
 
     private static final String TENANT_ID = "tenant1";
@@ -49,7 +53,7 @@ class CartServiceTest {
     @BeforeEach
     void setUp() {
         cartService = new CartService(cartRedisRepository, cartBackupRepository, calculationService, 
-                                     validationService, idempotencyService);
+                                     validationService, idempotencyService, businessMetricsCollector);
     }
 
     @Test

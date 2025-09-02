@@ -1,10 +1,10 @@
 package com.ecommerce.cartservice.integration;
 
-import com.ecommerce.cartservice.client.InventoryServiceClient;
-import com.ecommerce.cartservice.client.ProductServiceClient;
+import com.ecommerce.cartservice.client.grpc.InventoryServiceGrpcClient;
+import com.ecommerce.cartservice.client.grpc.ProductServiceGrpcClient;
 import com.ecommerce.cartservice.dto.AddToCartRequest;
 import com.ecommerce.cartservice.dto.CartResponse;
-import com.ecommerce.cartservice.dto.InventoryAvailabilityResponse;
+import com.ecommerce.cartservice.dto.InventoryCheckResponse;
 import com.ecommerce.cartservice.dto.ProductValidationResponse;
 import com.ecommerce.cartservice.exception.CartValidationException;
 import com.ecommerce.cartservice.exception.InsufficientInventoryException;
@@ -21,7 +21,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -36,10 +35,10 @@ class CartValidationIntegrationTest {
     private CartService cartService;
 
     @MockBean
-    private ProductServiceClient productServiceClient;
+    private ProductServiceGrpcClient productServiceGrpcClient;
 
     @MockBean
-    private InventoryServiceClient inventoryServiceClient;
+    private InventoryServiceGrpcClient inventoryServiceGrpcClient;
 
     @Autowired
     private RedisTemplate<String, String> redisTemplate;
@@ -51,7 +50,7 @@ class CartValidationIntegrationTest {
     private String userId;
     private AddToCartRequest validRequest;
     private ProductValidationResponse validProduct;
-    private InventoryAvailabilityResponse availableInventory;
+    private InventoryCheckResponse availableInventory;
 
     @BeforeEach
     void setUp() {
@@ -70,10 +69,10 @@ class CartValidationIntegrationTest {
         validProduct.setSku("SKU123");
         validProduct.setName("Test Product");
         validProduct.setPrice(new BigDecimal("29.99"));
-        validProduct.setStatus("ACTIVE");
+        validProduct.setValid(true);
         validProduct.setActive(true);
 
-        availableInventory = new InventoryAvailabilityResponse();
+        availableInventory = new InventoryCheckResponse();
         availableInventory.setProductId("product123");
         availableInventory.setAvailableQuantity(10);
         availableInventory.setAvailable(true);
@@ -86,10 +85,10 @@ class CartValidationIntegrationTest {
     @Test
     void addToCart_WithValidation_Success() {
         // Arrange
-        when(productServiceClient.validateProductWithSku(tenantId, "product123", "SKU123"))
-            .thenReturn(Optional.of(validProduct));
-        when(inventoryServiceClient.checkAvailability(tenantId, "product123", 2))
-            .thenReturn(Optional.of(availableInventory));
+        when(productServiceGrpcClient.validateProduct("product123", "SKU123"))
+            .thenReturn(validProduct);
+        when(inventoryServiceGrpcClient.checkAvailability("product123", 2))
+            .thenReturn(availableInventory);
 
         // Act
         var result = cartService.addToCart(tenantId, userId, validRequest);
@@ -100,15 +99,21 @@ class CartValidationIntegrationTest {
         assertEquals("product123", result.getItems().get(0).getProductId());
         assertEquals(Integer.valueOf(2), result.getItems().get(0).getQuantity());
 
-        verify(productServiceClient).validateProductWithSku(tenantId, "product123", "SKU123");
-        verify(inventoryServiceClient).checkAvailability(tenantId, "product123", 2);
+        verify(productServiceGrpcClient).validateProduct("product123", "SKU123");
+        verify(inventoryServiceGrpcClient).checkAvailability("product123", 2);
     }
 
     @Test
     void addToCart_ProductNotFound_ThrowsException() {
         // Arrange
-        when(productServiceClient.validateProductWithSku(tenantId, "product123", "SKU123"))
-            .thenReturn(Optional.empty());
+        ProductValidationResponse invalidProduct = new ProductValidationResponse();
+        invalidProduct.setProductId("product123");
+        invalidProduct.setSku("SKU123");
+        invalidProduct.setValid(false);
+        invalidProduct.setActive(false);
+        
+        when(productServiceGrpcClient.validateProduct("product123", "SKU123"))
+            .thenReturn(invalidProduct);
 
         // Act & Assert
         ProductNotAvailableException exception = assertThrows(
@@ -117,8 +122,8 @@ class CartValidationIntegrationTest {
         );
 
         assertEquals("Product not found: product123", exception.getMessage());
-        verify(productServiceClient).validateProductWithSku(tenantId, "product123", "SKU123");
-        verifyNoInteractions(inventoryServiceClient);
+        verify(productServiceGrpcClient).validateProduct("product123", "SKU123");
+        verifyNoInteractions(inventoryServiceGrpcClient);
     }
 
     @Test
@@ -127,10 +132,10 @@ class CartValidationIntegrationTest {
         availableInventory.setAvailableQuantity(1);
         availableInventory.setAvailable(false);
 
-        when(productServiceClient.validateProductWithSku(tenantId, "product123", "SKU123"))
-            .thenReturn(Optional.of(validProduct));
-        when(inventoryServiceClient.checkAvailability(tenantId, "product123", 2))
-            .thenReturn(Optional.of(availableInventory));
+        when(productServiceGrpcClient.validateProduct("product123", "SKU123"))
+            .thenReturn(validProduct);
+        when(inventoryServiceGrpcClient.checkAvailability("product123", 2))
+            .thenReturn(availableInventory);
 
         // Act & Assert
         InsufficientInventoryException exception = assertThrows(
@@ -139,8 +144,8 @@ class CartValidationIntegrationTest {
         );
 
         assertTrue(exception.getMessage().contains("Insufficient inventory"));
-        verify(productServiceClient).validateProductWithSku(tenantId, "product123", "SKU123");
-        verify(inventoryServiceClient).checkAvailability(tenantId, "product123", 2);
+        verify(productServiceGrpcClient).validateProduct("product123", "SKU123");
+        verify(inventoryServiceGrpcClient).checkAvailability("product123", 2);
     }
 
     @Test
@@ -148,10 +153,10 @@ class CartValidationIntegrationTest {
         // Arrange
         validRequest.setIdempotencyKey("idempotency123");
 
-        when(productServiceClient.validateProductWithSku(tenantId, "product123", "SKU123"))
-            .thenReturn(Optional.of(validProduct));
-        when(inventoryServiceClient.checkAvailability(tenantId, "product123", 2))
-            .thenReturn(Optional.of(availableInventory));
+        when(productServiceGrpcClient.validateProduct("product123", "SKU123"))
+            .thenReturn(validProduct);
+        when(inventoryServiceGrpcClient.checkAvailability("product123", 2))
+            .thenReturn(availableInventory);
 
         // Act - First call
         var result1 = cartService.addToCart(tenantId, userId, validRequest);
@@ -166,8 +171,8 @@ class CartValidationIntegrationTest {
         assertEquals(result1.getTotal(), result2.getTotal());
 
         // Verify external services called only once
-        verify(productServiceClient, times(1)).validateProductWithSku(tenantId, "product123", "SKU123");
-        verify(inventoryServiceClient, times(1)).checkAvailability(tenantId, "product123", 2);
+        verify(productServiceGrpcClient, times(1)).validateProduct("product123", "SKU123");
+        verify(inventoryServiceGrpcClient, times(1)).checkAvailability("product123", 2);
     }
 
     @Test
@@ -175,8 +180,8 @@ class CartValidationIntegrationTest {
         // Arrange
         validProduct.setPrice(new BigDecimal("39.99")); // Significant price difference
 
-        when(productServiceClient.validateProductWithSku(tenantId, "product123", "SKU123"))
-            .thenReturn(Optional.of(validProduct));
+        when(productServiceGrpcClient.validateProduct("product123", "SKU123"))
+            .thenReturn(validProduct);
 
         // Act & Assert
         CartValidationException exception = assertThrows(
@@ -185,8 +190,8 @@ class CartValidationIntegrationTest {
         );
 
         assertTrue(exception.getMessage().contains("Price has changed"));
-        verify(productServiceClient).validateProductWithSku(tenantId, "product123", "SKU123");
-        verifyNoInteractions(inventoryServiceClient);
+        verify(productServiceGrpcClient).validateProduct("product123", "SKU123");
+        verifyNoInteractions(inventoryServiceGrpcClient);
     }
 
     @Test
@@ -203,40 +208,40 @@ class CartValidationIntegrationTest {
     @Test
     void validateCartForCheckout_ValidCart_Success() {
         // Arrange - First add item to cart
-        when(productServiceClient.validateProductWithSku(tenantId, "product123", "SKU123"))
-            .thenReturn(Optional.of(validProduct));
-        when(inventoryServiceClient.checkAvailability(tenantId, "product123", 2))
-            .thenReturn(Optional.of(availableInventory));
+        when(productServiceGrpcClient.validateProduct("product123", "SKU123"))
+            .thenReturn(validProduct);
+        when(inventoryServiceGrpcClient.checkAvailability("product123", 2))
+            .thenReturn(availableInventory);
 
         cartService.addToCart(tenantId, userId, validRequest);
 
         // Reset mocks for validation call
-        reset(productServiceClient, inventoryServiceClient);
-        when(productServiceClient.validateProductWithSku(tenantId, "product123", "SKU123"))
-            .thenReturn(Optional.of(validProduct));
-        when(inventoryServiceClient.checkAvailability(tenantId, "product123", 2))
-            .thenReturn(Optional.of(availableInventory));
+        reset(productServiceGrpcClient, inventoryServiceGrpcClient);
+        when(productServiceGrpcClient.validateProduct("product123", "SKU123"))
+            .thenReturn(validProduct);
+        when(inventoryServiceGrpcClient.checkAvailability("product123", 2))
+            .thenReturn(availableInventory);
 
         // Act & Assert
         assertDoesNotThrow(() -> cartService.validateCartForCheckout(tenantId, userId));
 
-        verify(productServiceClient).validateProductWithSku(tenantId, "product123", "SKU123");
-        verify(inventoryServiceClient).checkAvailability(tenantId, "product123", 2);
+        verify(productServiceGrpcClient).validateProduct("product123", "SKU123");
+        verify(inventoryServiceGrpcClient).checkAvailability("product123", 2);
     }
 
     @Test
     void addToCart_ExternalServiceFailure_HandlesGracefully() {
         // Arrange
-        when(productServiceClient.validateProductWithSku(tenantId, "product123", "SKU123"))
-            .thenThrow(new RuntimeException("External service unavailable"));
+        when(productServiceGrpcClient.validateProduct("product123", "SKU123"))
+            .thenThrow(new ProductNotAvailableException("External service unavailable"));
 
         // Act & Assert
-        RuntimeException exception = assertThrows(
-            RuntimeException.class,
+        ProductNotAvailableException exception = assertThrows(
+            ProductNotAvailableException.class,
             () -> cartService.addToCart(tenantId, userId, validRequest)
         );
 
         assertEquals("External service unavailable", exception.getMessage());
-        verify(productServiceClient).validateProductWithSku(tenantId, "product123", "SKU123");
+        verify(productServiceGrpcClient).validateProduct("product123", "SKU123");
     }
 }
